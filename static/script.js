@@ -226,7 +226,7 @@ function demoRoute(path, o) {
   }
   throw new Error("Не найдено");
 }
-const dm = () => !(me.demo || DEMO) ? "" : `<div class="card"><b>Тестовые участники</b><p class="mut">${DEMO ? "Приватный просмотр: данные только в этом браузере. Ссылка не передаёт сделку на другое устройство." : "Данные сохраняет Python в SQLite. Откройте второго участника в другой вкладке."}</p>
+const dm = () => !(me.demo || DEMO) ? "" : `<div class="card"><b>Тестовые участники</b><p class="mut">${DEMO ? "Приватный просмотр: данные только в этом браузере. Код не соединит сделки на разных устройствах." : "Данные сохраняет Python в SQLite. Откройте второго участника в другой вкладке."}</p>
   <div class="chips" style="margin:0">${[1, 2, 3].map(n => `<button class="chip ${n === me.user.id ? "on" : ""}" data-act="duser" data-arg="${n}">Участник ${n}</button>`).join("")}<button class="chip" data-act="dreset">Сброс</button>${DEMO ? '<button class="chip" data-act="demoAdmin">Тестовый доступ к панели</button>' : ""}</div></div>`;
 A.demoAdmin = async () => {
   if (!DEMO) return;
