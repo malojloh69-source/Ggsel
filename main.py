@@ -17,15 +17,22 @@ from flask import Flask, g, jsonify, request, send_from_directory
 import config
 import database as db
 
-# Меняйте только эту строку, чтобы обновить контакт поддержки в приложении и боте.
-SUPPORT_USERNAME = ""  # Например: "my_support_bot"; пусто — значение из .env.
+# Быстрые настройки: укажите значения в кавычках, без @; пусто — значение из .env.
+BOT_USERNAME = ""      # Юз бота — например, "my_deals_bot".
+SUPPORT_USERNAME = ""  # Юз поддержки — например, "my_support".
+APP_SHORT_NAME = ""    # Короткое имя Mini App, если настроено в BotFather.
+PUBLIC_BASE_URL = ""   # Адрес Bothost — например, "https://bot-123.bothost.tech".
+
+config.BOT_USERNAME = (BOT_USERNAME or config.BOT_USERNAME).lstrip("@")
 config.SUPPORT = (SUPPORT_USERNAME or config.SUPPORT).lstrip("@")
+config.APP_SHORT_NAME = (APP_SHORT_NAME or config.APP_SHORT_NAME).strip().strip("/")
+config.PUBLIC_BASE_URL = (PUBLIC_BASE_URL or config.PUBLIC_BASE_URL).rstrip("/")
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=None)
 LOG = logging.getLogger(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
-ASSETS = {"style.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js"}
+ASSETS = {"style.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.jpg"}
 db.init()
 
 SC = db.SCALE
@@ -126,7 +133,7 @@ def auth(admin=False):
             if u["blocked"]:
                 return err("Аккаунт заблокирован", 403)
             g.user = u
-            g.is_admin = u["id"] in config.ADMIN_IDS
+            g.is_admin = db.is_admin(u["id"])
             if admin and not g.is_admin:
                 return err("Нет доступа", 403)
             return f(*a, **kw)
@@ -159,6 +166,8 @@ def allowed(d, uid):
 def deal_view(d, uid):
     nft = json.loads(d["nft"] or "[]")
     part = f"/{config.APP_SHORT_NAME}" if config.APP_SHORT_NAME else ""
+    invite = (f"https://t.me/{config.BOT_USERNAME}{part}?startapp=deal_{d['id']}"
+              if config.BOT_USERNAME else None)
     reviewable = (
         d["status"] == "completed"
         and uid in (d["seller_id"], d["buyer_id"])
@@ -170,8 +179,7 @@ def deal_view(d, uid):
         "title": (d["description"] or "")[:40] or f"NFT-подарки ({len(nft)})",
         "seller": pub(d["seller_id"]), "buyer": pub(d["buyer_id"]),
         "actions": allowed(d, uid), "is_creator": uid == d["creator_id"], "can_review": bool(reviewable),
-        "link": (f"https://t.me/{config.BOT_USERNAME}{part}?startapp=deal_{d['id']}"
-                 if config.BOT_USERNAME and not config.DEV_MODE else f"{config.PUBLIC_BASE_URL}/?deal={d['id']}&dev={2 if d['creator_id'] == 1 else 1}" if config.DEV_MODE else f"{config.PUBLIC_BASE_URL}/?deal={d['id']}"),
+        "link": (f"{config.PUBLIC_BASE_URL}/?deal={d['id']}&dev={2 if d['creator_id'] == 1 else 1}" if config.DEV_MODE else invite),
         "web_link": f"{config.PUBLIC_BASE_URL}/?deal={d['id']}",
         "payment_mode": config.PAYMENT_MODE,
         "updated": d["updated"],
@@ -238,6 +246,9 @@ def register_webhook():
     url = config.PUBLIC_BASE_URL + "/telegram/webhook"
     while True:
         try:
+            bot_info = bot.telegram("getMe", {})
+            if not config.BOT_USERNAME:
+                config.BOT_USERNAME = bot_info["username"].lstrip("@")
             bot.telegram("setWebhook", {
                 "url": url,
                 "secret_token": webhook_secret(),
@@ -302,14 +313,38 @@ def home():
     uid = g.user["id"]
     ds = db.rows("SELECT * FROM deals WHERE seller_id=? OR buyer_id=? ORDER BY created DESC LIMIT 5", (uid, uid))
     rv = db.rows(
-        "SELECT r.rating, r.text, r.created, u.username, u.first_name FROM reviews r "
-        "JOIN users u ON u.id=r.author_id ORDER BY r.id DESC LIMIT 15"
+        "SELECT rating,text,created,username,first_name,kind FROM ("
+        "SELECT r.rating,r.text,r.created,u.username,u.first_name,'deal' AS kind FROM reviews r "
+        "JOIN users u ON u.id=r.author_id UNION ALL "
+        "SELECT r.rating,r.text,r.updated AS created,u.username,u.first_name,'site' AS kind FROM site_reviews r "
+        "JOIN users u ON u.id=r.author_id) ORDER BY created DESC LIMIT 15"
     )
     return jsonify(
         deals=[deal_view(d, uid) for d in ds],
-        reviews=[{"rating": r["rating"], "text": r["text"], "created": r["created"],
+        reviews=[{"rating": r["rating"], "text": r["text"], "created": r["created"], "kind": r["kind"],
                   "name": "@" + r["username"] if r["username"] else r["first_name"] or "user"} for r in rv],
     )
+
+
+@app.route("/api/reviews/mine", methods=["GET", "POST"])
+@auth()
+def site_review():
+    uid = g.user["id"]
+    if request.method == "GET":
+        return jsonify(db.row("SELECT rating,text,created,updated FROM site_reviews WHERE author_id=?", (uid,)))
+    j = request.get_json(silent=True) or {}
+    rating = j.get("rating")
+    if type(rating) is not int or not 1 <= rating <= 5:
+        return err("Поставьте оценку от 1 до 5")
+    body = clean(j.get("text"), 300)
+    if not body:
+        return err("Напишите отзыв")
+    t = int(time.time())
+    with db.tx() as c:
+        c.execute("INSERT INTO site_reviews(author_id,rating,text,created,updated) VALUES(?,?,?,?,?) "
+                  "ON CONFLICT(author_id) DO UPDATE SET rating=excluded.rating,text=excluded.text,updated=excluded.updated",
+                  (uid, rating, body, t, t))
+    return jsonify(ok=True)
 
 
 # ---------------------------------------------------------------- deals
@@ -534,7 +569,7 @@ def withdraw():
 @app.get("/api/admin/users")
 @auth(admin=True)
 def a_users():
-    us = db.rows("SELECT id,username,first_name,blocked,created FROM users ORDER BY created DESC LIMIT 200")
+    us = db.rows("SELECT id,username,first_name,blocked,created FROM users ORDER BY created DESC")
     bal = {}
     for r in db.rows("SELECT user_id,currency,amount FROM balances WHERE amount>0"):
         bal.setdefault(r["user_id"], {})[r["currency"]] = fmt(r["amount"])
@@ -546,8 +581,19 @@ def a_users():
 @app.get("/api/admin/deals")
 @auth(admin=True)
 def a_deals():
-    ds = db.rows("SELECT * FROM deals ORDER BY created DESC LIMIT 200")
+    ds = db.rows("SELECT * FROM deals ORDER BY created DESC")
     return jsonify([deal_view(d, 0) for d in ds])
+
+
+@app.get("/api/admin/stats")
+@auth(admin=True)
+def a_stats():
+    users = db.row("SELECT COUNT(*) n FROM users")["n"]
+    deals = db.row("SELECT COUNT(*) n FROM deals")["n"]
+    completed = db.row("SELECT COUNT(*) n FROM deals WHERE status='completed'")["n"]
+    turnover = db.rows("SELECT currency,SUM(amount) total FROM deals WHERE status='completed' GROUP BY currency")
+    return jsonify(users=users, deals=deals, completed=completed,
+                   turnover={r["currency"]: fmt(r["total"]) for r in turnover})
 
 
 @app.get("/api/admin/requests")
@@ -605,7 +651,7 @@ def a_credit():
 @app.post("/api/admin/users/<int:uid>/block")
 @auth(admin=True)
 def a_block(uid):
-    if uid in config.ADMIN_IDS:
+    if db.is_admin(uid):
         return err("Нельзя заблокировать администратора")
     flag = 1 if (request.get_json(silent=True) or {}).get("blocked") else 0
     with db.tx() as c:

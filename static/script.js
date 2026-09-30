@@ -15,7 +15,7 @@ const ST = {
   paid: ["Оплата получена", "green"], completed: ["Завершена", "green"], cancelled: ["Отменена", "red"],
 };
 const LBL = { invite: "Пригласить участника", join: "Вступить в сделку", pay: "Оплатить", confirm: "Подтвердить получение", refund: "Вернуть деньги покупателю", cancel: "Отменить сделку" };
-const TX = { deposit: "Пополнение", withdraw: "Вывод", deal_pay: "Оплата сделки", deal_release: "Выплата по сделке", deal_refund: "Возврат по сделке", sandbox_credit: "Тестовое пополнение", admin_credit: "Тестовое начисление" };
+const TX = { deposit: "Пополнение", withdraw: "Вывод", deal_pay: "Оплата сделки", deal_release: "Выплата по сделке", deal_refund: "Возврат по сделке", sandbox_credit: "Тестовое пополнение", admin_credit: "Тестовое начисление", promo_work: "Промокод /work" };
 const TXS = { pending: ["На рассмотрении", "amber"], done: ["Выполнено", "green"], rejected: ["Отклонено", "red"] };
 const RK = { card: ["Банковская карта", "wallet", "Последние 4 цифры (без полного номера)"], ton: ["TON кошелёк", "gem", "Адрес TON-кошелька"], usdt: ["USDT TRC20", "wallet", "Адрес TRC20 (начинается с T)"] };
 const NFT_RE = /^https:\/\/t\.me\/nft\/[A-Za-z0-9_]{2,64}-\d{1,12}$/;
@@ -53,9 +53,11 @@ async function api(path, o = {}) {
 const FINAL = ["completed", "cancelled"];
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { toast("Браузер не разрешил сохранение данных", 1); } };
-const newDB = () => ({ users: {}, bal: {}, deals: {}, txs: [], req: {}, rv: [], n: 0 });
+const newDB = () => ({ users: {}, admins: {}, bal: {}, deals: {}, txs: [], req: {}, rv: [], n: 0 });
 let DB; try { DB = JSON.parse(lsGet("deal_preview_v2")); } catch (e) { }
 DB = DB || newDB();
+DB.siteRv ||= [];
+DB.admins ||= {};
 let duid = +(DEV || lsGet("deal_preview_user_v2") || 1) || 1;
 const save = () => lsSet("deal_preview_v2", JSON.stringify(DB));
 const now = () => Math.floor(Date.now() / 1000);
@@ -99,7 +101,7 @@ function demoRoute(path, o) {
     const done = mine().filter(d => d.status === "completed"), to = {}, rt = DB.rv.filter(r => r.target_id === u);
     done.forEach(d => (to[d.currency] = String(r8((+to[d.currency] || 0) + d.amount))));
     return {
-      user: { id: u, username: usr(u).username, name: usr(u).name, photo: null }, is_admin: u === 1, balances: bl, support: CFG.support || "", demo: true, payment_mode:"sandbox", auth_verified:false,
+      user: { id: u, username: usr(u).username, name: usr(u).name, photo: null }, is_admin: !!DB.admins[u], balances: bl, support: CFG.support || "", demo: true, payment_mode:"sandbox", auth_verified:false,
       stats: { completed: done.length, active: mine().filter(d => !FINAL.includes(d.status)).length, rating: rt.length ? Math.round(rt.reduce((a, r) => a + r.rating, 0) / rt.length * 10) / 10 : null, reviews: rt.length, turnover: to },
     };
   }
@@ -110,7 +112,16 @@ function demoRoute(path, o) {
   if (R === "live") return {source:"preview",revision:DB.revision||0,server_time:now(),items:mine().filter(d=>d.status==="completed").flatMap(d=>d.nft.map(url=>{
     const [slug,number]=url.split("/").pop().split("-");return {deal_id:d.id,title:slug.replace(/([a-z])([A-Z])/g,"$1 $2"),number,url,amount:String(d.amount),currency:d.currency,completed:d.updated||d.created};
   }))};
-  if (R === "home") return { deals: mine().slice(0, 5).map(d => viewD(d, u)), reviews: DB.rv.slice(-15).reverse().map(r => ({ rating: r.rating, text: r.text, created: r.created, name: "@" + usr(r.author_id).username })) };
+  if (R === "home") return { deals: mine().slice(0, 5).map(d => viewD(d, u)), reviews: [...DB.rv.map(r=>({...r,kind:"deal"})),...DB.siteRv.map(r=>({...r,kind:"site",created:r.updated}))].sort((a,b)=>b.created-a.created).slice(0,15).map(r => ({ rating: r.rating, text: r.text, created: r.created, kind:r.kind, name: "@" + usr(r.author_id).username })) };
+  if (R === "reviews" && s[1] === "mine") {
+    if (m === "GET") return DB.siteRv.find(r=>r.author_id===u) || null;
+    if (!Number.isInteger(b.rating) || b.rating < 1 || b.rating > 5) throw new Error("Поставьте оценку от 1 до 5");
+    const text=String(b.text||"").trim().slice(0,300); if(!text) throw new Error("Напишите отзыв");
+    const old=DB.siteRv.find(r=>r.author_id===u);
+    if(old) Object.assign(old,{rating:b.rating,text,updated:now()});
+    else DB.siteRv.push({author_id:u,rating:b.rating,text,created:now(),updated:now()});
+    return {ok:true};
+  }
   if (R === "deals") {
     if (s.length === 1 && m === "GET") { const f = q.get("filter"); return mine().filter(d => f === "active" ? !FINAL.includes(d.status) : f === "done" ? d.status === "completed" : true).map(d => viewD(d, u)); }
     if (s.length === 1) {
@@ -165,14 +176,19 @@ function demoRoute(path, o) {
     return { ok: true };
   }
   if (R === "admin") {
-    if (u !== 1) throw new Error("Нет доступа");
+    if (!DB.admins[u]) throw new Error("Нет доступа");
     const W = s[1];
+    if (W === "stats") {
+      const done=Object.values(DB.deals).filter(d=>d.status==="completed"),turnover={};
+      done.forEach(d=>turnover[d.currency]=String(r8(+(turnover[d.currency]||0)+d.amount)));
+      return {users:Object.keys(DB.users).length,deals:Object.keys(DB.deals).length,completed:done.length,turnover};
+    }
     if (W === "requests") return DB.txs.filter(t => t.status === "pending").reverse();
     if (W === "users" && m === "GET") return Object.values(DB.users).map(x => { const bl = {}; CUR.forEach(c => { if (bal(x.id, c) > 0) bl[c] = String(bal(x.id, c)); }); return { id: x.id, username: x.username, first_name: x.name, blocked: x.blocked, created: x.created, balances: bl }; });
     if (W === "deals" && m === "GET") return Object.values(DB.deals).sort((x, y) => y.created - x.created).map(d => viewD(d, 0));
     if (W === "users") {
       const id = +s[2];
-      if (id === 1) throw new Error("Нельзя заблокировать администратора");
+      if (DB.admins[id]) throw new Error("Нельзя заблокировать администратора");
       if (!DB.users[id]) throw new Error("Пользователь не найден");
       DB.users[id].blocked = b.blocked ? 1 : 0; return { ok: true };
     }
@@ -202,8 +218,13 @@ function demoRoute(path, o) {
   }
   throw new Error("Не найдено");
 }
-const dm = () => !(me.demo || DEMO) ? "" : `<div class="card"><b>Тестовые участники</b><p class="mut">${DEMO ? "Приватный просмотр: данные только в этом браузере. Ссылка не передаёт сделку на другое устройство." : "Данные сохраняет Python в SQLite. Откройте второго участника в другой вкладке."} Участник 1 — администратор.</p>
-  <div class="chips" style="margin:0">${[1, 2, 3].map(n => `<button class="chip ${n === me.user.id ? "on" : ""}" data-act="duser" data-arg="${n}">Участник ${n}</button>`).join("")}<button class="chip" data-act="dreset">Сброс</button></div></div>`;
+const dm = () => !(me.demo || DEMO) ? "" : `<div class="card"><b>Тестовые участники</b><p class="mut">${DEMO ? "Приватный просмотр: данные только в этом браузере. Ссылка не передаёт сделку на другое устройство." : "Данные сохраняет Python в SQLite. Откройте второго участника в другой вкладке."}</p>
+  <div class="chips" style="margin:0">${[1, 2, 3].map(n => `<button class="chip ${n === me.user.id ? "on" : ""}" data-act="duser" data-arg="${n}">Участник ${n}</button>`).join("")}<button class="chip" data-act="dreset">Сброс</button>${DEMO ? '<button class="chip" data-act="demoAdmin">Тестовый доступ к панели</button>' : ""}</div></div>`;
+A.demoAdmin = async () => {
+  if (!DEMO) return;
+  DB.admins[duid] = true;
+  save(); await refreshMe(); render();
+};
 A.duser = async n => {
   if(DEMO) { duid=+n; lsSet("deal_preview_user_v2",String(n)); }
   else {DEV=n;sessionStorage.setItem("deal_dev_user",n);const url=new URL(location.href);url.searchParams.set("dev",n);history.replaceState(null,"",url);}
@@ -439,7 +460,7 @@ PG.deal = async id => {
   <div class="card"><div class="kv"><span class="mut">Продавец</span><b>${esc(d.seller ? d.seller.name : "Ожидается")}</b></div>
   <div class="kv"><span class="mut">Покупатель</span><b>${esc(d.buyer ? d.buyer.name : "Ожидается")}</b></div>
   <div class="kv"><span class="mut">Создана</span><span>${dt(d.created)}</span></div></div>
-  ${inv ? `<div class="card"><b>Ссылка для второго участника</b><div class="link" data-act="copy" data-arg="${esc(d.link)}">${ico("copy")}${esc(d.link)}</div>
+  ${inv && d.link ? `<div class="card"><b>Ссылка для второго участника</b><div class="link" data-act="copy" data-arg="${esc(d.link)}">${ico("copy")}${esc(d.link)}</div>
   <button class="btn s" data-act="copy" data-arg="${esc(d.link)}">${ico("copy")}Копировать ссылку</button><button class="btn" data-act="share" data-arg="${esc(d.link)}">${ico("send")}Отправить в Telegram</button></div>` : ""}
   ${d.status==="waiting_payment" && d.actions.includes("pay")?`<button class="btn s" data-act="topup">${ico("plus")}Пополнить баланс</button>`:""}
   ${d.actions.filter(a=>a!=="invite").map((a, k) => `<button class="btn ${a === "cancel" || a === "refund" ? "d" : k ? "s" : ""}" data-act="dact" data-arg="${a}">${LBL[a]}</button>`).join("")}
@@ -475,10 +496,14 @@ function reviewSheet(ids) {
 }
 A.rvdeal = () => reviewSheet([page[1]]);
 A.rvhome = async () => {
-  const ids = (await api("/deals?filter=done")).filter(d => d.can_review).map(d => d.id);
-  if (!ids.length) throw new Error("Нет завершённых сделок для отзыва");
-  reviewSheet(ids);
+  const old=await api("/reviews/mine");
+  sheet(`<h2>Мой отзыв</h2><label>Оценка</label><div class="grid3" id="rate" style="grid-template-columns:repeat(5,1fr)">${[1,2,3,4,5].map(n=>`<button class="opt ${n===(old?.rating||5)?"on":""}" data-act="seg" data-arg="${n}">${n}★</button>`).join("")}</div>
+    <label>Комментарий</label><textarea id="rvt" maxlength="300" placeholder="Ваш отзыв">${esc(old?.text||"")}</textarea><button class="btn" data-act="siteresend">Сохранить отзыв</button>`);
 };
+A.siteresend = (_, b) => busy(b, async () => {
+  await api("/reviews/mine",{method:"POST",body:{rating:+$("#rate .on").dataset.arg,text:$("#rvt").value}});
+  closeSheet(); toast("Отзыв сохранён"); render();
+});
 A.rvsend = (_, b) => busy(b, async () => {
   await api(`/deals/${$("#rvd .on").dataset.arg}/review`, { method: "POST", body: { rating: +$("#rate .on").dataset.arg, text: $("#rvt").value } });
   closeSheet(); haptic("success"); toast("Спасибо за отзыв"); render();
@@ -542,6 +567,7 @@ PG.profile = async () => {
   <div class="stat">Рейтинг<b>${s.rating ? s.rating + " ★" : "—"}</b></div><div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div></div>
   ${dm()}<div class="group-label">УПРАВЛЕНИЕ</div>
   ${me.is_admin ? mi("go", "admin", "shield", "Ворк-панель", "Управление платформой") : ""}
+  ${mi("rvhome", "", "help", "Мой отзыв")}
   ${mi("tab", "reqs", "gem", "Мои реквизиты")}${mi("wdsheet", "", "out", "Вывод средств")}${mi("go", "deals", "bag", "История сделок")}
   ${mi("go", "ops", "list", "История операций")}<div class="group-label">СЕРВИС И ПОМОЩЬ</div>${mi("go", "support", "headset", "Поддержка")}${mi("language", "", "help", "Язык интерфейса", "Русский")}${mi("closetg", "", "out", "Закрыть мини-приложение")}`;
 };
@@ -549,11 +575,14 @@ PG.support = async () => `${bk}<h1>Поддержка</h1><div class="card"><p>�
   ${me.support ? `<button class="btn" data-act="support">${ico("send")}Написать в поддержку</button>` : `<p class="mut">Контакт поддержки пока не указан владельцем приложения.</p>`}</div>`;
 
 // admin / work panel
-PG.admin = async (tab = "req") => {
-  const tabs = `<div class="chips" style="margin:0 0 16px">${[["req", "Заявки"], ["users", "Пользователи"], ["deals", "Сделки"]]
+PG.admin = async (tab = "stats") => {
+  const tabs = `<div class="chips" style="margin:0 0 16px">${[["stats", "Обзор"], ["req", "Заявки"], ["users", "Пользователи"], ["deals", "Сделки"]]
     .map(([k, l]) => `<button class="chip ${k === tab ? "on" : ""}" data-act="atab" data-arg="${k}">${l}</button>`).join("")}</div>`;
   let body = "";
-  if (tab === "req") {
+  if (tab === "stats") {
+    const s=await api("/admin/stats");
+    body=`<div class="stats"><div class="stat">Пользователей<b>${s.users}</b></div><div class="stat">Всего сделок<b>${s.deals}</b></div><div class="stat">Завершено<b>${s.completed}</b></div><div class="stat">Оборот<b style="font-size:15px">${esc(Object.entries(s.turnover).map(([c,v])=>fm(v,c)).join(" · ")||"0")}</b></div></div>`;
+  } else if (tab === "req") {
     const r = await api("/admin/requests");
     body = r.length ? r.map(t => `<div class="card"><div class="row"><b>${TX[t.type]} ${fm(t.amount, t.currency)}</b><span class="mut">ID ${t.user_id}</span></div>
       ${t.details ? `<div class="link">${esc(t.details)}</div>` : ""}<div class="row" style="justify-content:flex-start;margin-top:10px">
@@ -720,6 +749,7 @@ if(document.modelContext?.registerTool){
   const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || P.get("deal") || "";
   const m = /^(?:deal_)?([A-Fa-f0-9]{24})$/.exec(sp);
   if (m) page = ["deal", m[1].toUpperCase()];
+  else if(P.get("admin")==="1" && me.is_admin) page=["admin","stats"];
   await render();
   await syncLive();setInterval(syncLive,3000);setInterval(rotateFeed,26000);
 })();

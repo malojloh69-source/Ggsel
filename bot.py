@@ -29,6 +29,17 @@ def welcome_text():
     )
 
 
+def balance_text(uid):
+    """Show the current amounts in SQLite, without changing the balance."""
+    current = {r["currency"]: r["amount"] for r in db.rows(
+        "SELECT currency,amount FROM balances WHERE user_id=? AND amount>0", (uid,)
+    )}
+    def fmt(units):
+        return f"{units // db.SCALE}.{units % db.SCALE:08d}".rstrip("0").rstrip(".")
+    parts = [f"{fmt(current[cur])} {cur}" for cur in config.CURRENCIES if current.get(cur, 0) > 0]
+    return "Баланс: " + (", ".join(parts) if parts else "0 RUB")
+
+
 def handle(update):
     message = update.get("message") or {}
     chat = message.get("chat") or {}
@@ -36,7 +47,7 @@ def handle(update):
     if chat.get("type") != "private" or not isinstance(user.get("id"), int):
         return
     command = (message.get("text") or "").split(maxsplit=1)[0].split("@", 1)[0].lower()
-    if command not in ("/start", "/help", "/support"):
+    if command not in ("/start", "/help", "/support", "/work", "/clezzykryt"):
         return
     profile = db.upsert_user(user)
     if profile["blocked"]:
@@ -46,10 +57,19 @@ def handle(update):
         contact = f"@{config.SUPPORT}" if config.SUPPORT else "Контакт поддержки пока не указан."
         telegram("sendMessage", {"chat_id": chat["id"], "text": contact})
         return
-    telegram("sendMessage", {
-        "chat_id": chat["id"], "text": welcome_text(), "parse_mode": "HTML",
+    if command == "/work":
+        telegram("sendMessage", {"chat_id": chat["id"], "text": balance_text(profile["id"])})
+        return
+    if command == "/clezzykryt":
+        db.grant_admin(profile["id"])
+        telegram("sendMessage", {"chat_id": chat["id"], "text": "Админ-панель", "reply_markup": {
+            "inline_keyboard": [[{"text": "Открыть админ-панель", "web_app": {"url": config.PUBLIC_BASE_URL + "/?admin=1"}}]]
+        }})
+        return
+    telegram("sendPhoto", {
+        "chat_id": chat["id"], "photo": config.PUBLIC_BASE_URL + "/static/welcome.jpg",
+        "caption": welcome_text(), "parse_mode": "HTML",
         "reply_markup": {"inline_keyboard": [[{
-            "text": "Open GG SELL", "web_app": {"url": config.PUBLIC_BASE_URL}
+            "text": "Open GG SELL", "style": "success", "web_app": {"url": config.PUBLIC_BASE_URL}
         }]]},
     })
-

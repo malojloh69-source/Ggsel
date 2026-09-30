@@ -9,6 +9,7 @@ SCALE = 10 ** 8  # all money is stored as integers (1e-8 units)
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT, first_name TEXT, photo TEXT,
   blocked INTEGER NOT NULL DEFAULT 0, created INTEGER);
+CREATE TABLE IF NOT EXISTS admins(user_id INTEGER PRIMARY KEY, granted_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS balances(user_id INTEGER, currency TEXT,
   amount INTEGER NOT NULL DEFAULT 0 CHECK(amount>=0), PRIMARY KEY(user_id,currency));
 CREATE TABLE IF NOT EXISTS deals(id TEXT PRIMARY KEY, creator_id INTEGER, seller_id INTEGER, buyer_id INTEGER,
@@ -18,6 +19,10 @@ CREATE TABLE IF NOT EXISTS txs(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INT
 CREATE TABLE IF NOT EXISTS requisites(user_id INTEGER, kind TEXT, value TEXT, PRIMARY KEY(user_id,kind));
 CREATE TABLE IF NOT EXISTS reviews(id INTEGER PRIMARY KEY AUTOINCREMENT, deal_id TEXT, author_id INTEGER,
   target_id INTEGER, rating INTEGER, text TEXT, created INTEGER, UNIQUE(deal_id,author_id));
+CREATE TABLE IF NOT EXISTS site_reviews(author_id INTEGER PRIMARY KEY, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+  text TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS promo_claims(user_id INTEGER NOT NULL, code TEXT NOT NULL, created INTEGER NOT NULL,
+  PRIMARY KEY(user_id,code));
 CREATE TABLE IF NOT EXISTS deal_events(id INTEGER PRIMARY KEY AUTOINCREMENT,
  deal_id TEXT NOT NULL, status TEXT NOT NULL, created INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS ix_events_deal ON deal_events(deal_id,id);
@@ -79,6 +84,15 @@ def rows(sql, args=()):
 def row(sql, args=()):
     r = rows(sql, args)
     return r[0] if r else None
+
+
+def is_admin(uid):
+    return row("SELECT 1 FROM admins WHERE user_id=?", (uid,)) is not None
+
+
+def grant_admin(uid):
+    with tx() as c:
+        c.execute("INSERT OR IGNORE INTO admins(user_id,granted_at) VALUES(?,?)", (uid, int(time.time())))
 
 
 def upsert_user(tg):

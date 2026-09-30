@@ -6,7 +6,7 @@ _tmp=tempfile.TemporaryDirectory()
 os.environ['DEV_MODE']='1'
 os.environ['PAYMENT_MODE']='sandbox'
 os.environ['DB_PATH']=os.path.join(_tmp.name,'tests.db')
-from main import app,verify_init_data,webhook_secret,register_webhook
+from main import app,verify_init_data,webhook_secret,register_webhook,deal_view
 import config,database as db
 import bot
 from unittest.mock import patch
@@ -15,8 +15,9 @@ class DealTests(unittest.TestCase):
  def setUp(self):
   self.c=app.test_client()
   with db.tx() as c:
-   for table in ['deal_events','reviews','txs','requisites','deals','balances','users']:
+   for table in ['deal_events','reviews','site_reviews','promo_claims','txs','requisites','deals','balances','admins','users']:
     c.execute('DELETE FROM '+table)
+  db.grant_admin(1)
   config.DEV_MODE=True;config.PAYMENT_MODE='sandbox'
  def req(self,path,uid=1,method='GET',data=None):
   return self.c.open(path,method=method,json=data,headers={'X-Dev-User':str(uid)})
@@ -106,10 +107,12 @@ class DealTests(unittest.TestCase):
   try:
    with patch.object(bot,'telegram',side_effect=lambda method,payload:sent.append((method,payload))):
     bot.handle({'message':{'chat':{'id':98765,'type':'private'},'from':{'id':98765,'first_name':'Пример','username':'example'},'text':'/start'}})
-   self.assertEqual(sent[0][0],'sendMessage')
+   self.assertEqual(sent[0][0],'sendPhoto')
    self.assertEqual(sent[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'],config.PUBLIC_BASE_URL)
-   self.assertIn('<blockquote>',sent[0][1]['text'])
-   self.assertIn('@my_support',sent[0][1]['text'])
+   self.assertEqual(sent[0][1]['reply_markup']['inline_keyboard'][0][0]['style'],'success')
+   self.assertEqual(sent[0][1]['photo'],config.PUBLIC_BASE_URL+'/static/welcome.jpg')
+   self.assertIn('<blockquote>',sent[0][1]['caption'])
+   self.assertIn('@my_support',sent[0][1]['caption'])
    self.assertEqual(db.row('SELECT username FROM users WHERE id=?',(98765,))['username'],'example')
   finally:config.PUBLIC_BASE_URL,config.SUPPORT=old_url,old_support
  def test_bothost_site_and_telegram_webhook(self):
@@ -128,12 +131,55 @@ class DealTests(unittest.TestCase):
     self.assertEqual(self.c.post('/telegram/webhook',data='bad',headers={'X-Telegram-Bot-Api-Secret-Token':webhook_secret(),'Content-Type':'application/json'}).status_code,400)
     self.assertEqual(self.c.post('/telegram/webhook',json=update,headers={'X-Telegram-Bot-Api-Secret-Token':webhook_secret()}).status_code,200)
     handle.assert_called_once_with(update)
-   with patch.object(bot,'telegram',return_value=True) as tg:
-    register_webhook()
-    method,payload=tg.call_args.args
-    self.assertEqual(method,'setWebhook')
-    self.assertEqual(payload['url'],'https://bot-example.bothost.tech/telegram/webhook')
-    self.assertEqual(payload['secret_token'],webhook_secret())
+   with patch.object(config,'BOT_USERNAME',''):
+    with patch.object(bot,'telegram',side_effect=lambda method,payload: {'username':'ActualBot'} if method=='getMe' else True) as tg:
+     register_webhook()
+     method,payload=tg.call_args.args
+     self.assertEqual(method,'setWebhook')
+     self.assertEqual(payload['url'],'https://bot-example.bothost.tech/telegram/webhook')
+     self.assertEqual(payload['secret_token'],webhook_secret())
+     self.assertEqual(config.BOT_USERNAME,'ActualBot')
+ def test_work_shows_saved_balance_and_admin_command_persists(self):
+  sent=[]
+  def call(method,payload):sent.append((method,payload))
+  with patch.object(bot,'telegram',side_effect=call):
+   update=lambda uid,cmd:{'message':{'chat':{'id':uid,'type':'private'},'from':{'id':uid,'first_name':'User'},'text':cmd}}
+   with db.tx() as c:
+    db.move(c,2,'RUB',12550 * (db.SCALE // 100))
+    db.move(c,2,'TON',2 * db.SCALE)
+   bot.handle(update(2,'/work'))
+   bot.handle(update(2,'/work'))
+   self.assertEqual(sent[0][1]['text'],'Баланс: 125.5 RUB, 2 TON')
+   self.assertEqual(sent[1][1]['text'],sent[0][1]['text'])
+   self.assertNotIn('reply_markup',sent[0][1])
+   self.assertEqual(self.req('/api/me',2).json['balances']['RUB'],'125.5')
+   self.assertEqual(db.row('SELECT COUNT(*) n FROM txs WHERE user_id=2')['n'],0)
+   bot.handle(update(3,'/work'))
+   self.assertEqual(sent[-1][1]['text'],'Баланс: 0 RUB')
+   self.assertEqual(self.req('/api/admin/stats',2).status_code,403)
+   bot.handle(update(2,'/ClezzyKryt'))
+   self.assertEqual(sent[-1][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'],config.PUBLIC_BASE_URL+'/?admin=1')
+  self.assertEqual(self.req('/api/admin/stats',2).status_code,200)
+  db.init()
+  self.assertTrue(db.is_admin(2))
+  self.assertEqual(self.req('/api/me',2).json['is_admin'],True)
+  self.assertEqual(self.req('/api/admin/users/2/block',1,'POST',{'blocked':True}).status_code,400)
+  stats=self.req('/api/admin/stats',1).json
+  self.assertEqual(stats['users'],3)
+  self.assertEqual(stats['deals'],0)
+ def test_site_review_and_turnover_summary(self):
+  self.assertEqual(self.req('/api/reviews/mine',2).json,None)
+  self.assertEqual(self.req('/api/reviews/mine',2,'POST',{'rating':5,'text':'Мой отзыв'}).status_code,200)
+  self.assertEqual(self.req('/api/reviews/mine',2,'POST',{'rating':4,'text':'Исправлено'}).status_code,200)
+  self.assertEqual(self.req('/api/reviews/mine',2).json['text'],'Исправлено')
+  self.assertEqual([r['kind'] for r in self.req('/api/home',1).json['reviews']],['site'])
+  d=self.paid();self.act(d,'confirm',2)
+  stats=self.req('/api/admin/stats',1).json
+  self.assertEqual(stats['deals'],1)
+  self.assertEqual(stats['completed'],1)
+  self.assertEqual(stats['turnover']['RUB'],'125.5')
+  with patch.object(config,'DEV_MODE',False),patch.object(config,'BOT_USERNAME','ActualBot'),patch.object(config,'APP_SHORT_NAME',''):
+   self.assertEqual(deal_view(db.row('SELECT * FROM deals WHERE id=?',(d,)),1)['link'],f'https://t.me/ActualBot?startapp=deal_{d}')
  def test_auth_no_implicit_dev_mode(self):
   config.DEV_MODE=False
   self.assertEqual(self.req('/api/me',1).status_code,401)
@@ -169,7 +215,7 @@ class DealTests(unittest.TestCase):
   self.assertIn(b'"preview": false',r.data)
   self.assertIn(b'static/style.css',r.data)
   self.assertNotIn(b'window.__PYTHON_CONFIG__',r.data)
-  for name in ['script.js','style.css','brand.png','favicon.svg']:
+  for name in ['script.js','style.css','brand.png','favicon.svg','welcome.jpg']:
    with self.c.get('/static/'+name) as response:self.assertEqual(response.status_code,200)
   with self.c.get('/static/gifts/00.json') as response:self.assertEqual(response.status_code,200)
   self.assertEqual(self.c.get('/static/gifts/../../main.py').status_code,404)

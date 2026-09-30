@@ -16,9 +16,6 @@ BOT_USERNAME = os.getenv('BOT_USERNAME', '').lstrip('@')
 APP_SHORT_NAME = os.getenv('APP_SHORT_NAME', '')
 SUPPORT = os.getenv('SUPPORT_USERNAME', '').lstrip('@')
 DEV_MODE = os.getenv('DEV_MODE') == '1'
-ADMIN_IDS = {int(x) for x in os.getenv('ADMIN_IDS', '').split(',') if x.strip().isdigit()}
-if DEV_MODE:
-    ADMIN_IDS.add(1)
 PAYMENT_MODE = os.getenv('PAYMENT_MODE', 'sandbox')
 DATA = BASE / 'data'
 DATA.mkdir(exist_ok=True)
