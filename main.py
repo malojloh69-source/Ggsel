@@ -116,7 +116,7 @@ def verify_init_data(raw):
         return None
 
 
-def auth(admin=False):
+def auth(admin=False, worker=False):
     def deco(f):
         @wraps(f)
         def w(*a, **kw):
@@ -134,7 +134,10 @@ def auth(admin=False):
                 return err("Аккаунт заблокирован", 403)
             g.user = u
             g.is_admin = db.is_admin(u["id"])
+            g.is_worker = db.is_worker(u["id"])
             if admin and not g.is_admin:
+                return err("Нет доступа", 403)
+            if worker and not g.is_worker:
                 return err("Нет доступа", 403)
             return f(*a, **kw)
         return w
@@ -298,7 +301,7 @@ def me():
     rt = db.row("SELECT AVG(rating) a, COUNT(*) n FROM reviews WHERE target_id=?", (uid,))
     return jsonify(
         user={"id": uid, "username": u["username"], "name": u["first_name"], "photo": u["photo"]},
-        is_admin=g.is_admin, balances=bal, support=config.SUPPORT, demo=config.DEV_MODE, payment_mode=config.PAYMENT_MODE, auth_verified=not config.DEV_MODE,
+        is_admin=g.is_admin, is_worker=g.is_worker, balances=bal, support=config.SUPPORT, demo=config.DEV_MODE, payment_mode=config.PAYMENT_MODE, auth_verified=not config.DEV_MODE,
         stats={
             "completed": sum(r["n"] for r in done), "active": active,
             "rating": round(rt["a"], 1) if rt["a"] else None, "reviews": rt["n"],
@@ -317,7 +320,9 @@ def home():
         "SELECT r.rating,r.text,r.created,u.username,u.first_name,'deal' AS kind FROM reviews r "
         "JOIN users u ON u.id=r.author_id UNION ALL "
         "SELECT r.rating,r.text,r.updated AS created,u.username,u.first_name,'site' AS kind FROM site_reviews r "
-        "JOIN users u ON u.id=r.author_id) ORDER BY created DESC LIMIT 15"
+        "JOIN users u ON u.id=r.author_id UNION ALL "
+        "SELECT rating,text,created,NULL AS username,'Тестовый отзыв' AS first_name,'worker_test' AS kind "
+        "FROM worker_reviews) ORDER BY created DESC LIMIT 15"
     )
     return jsonify(
         deals=[deal_view(d, uid) for d in ds],
@@ -344,6 +349,68 @@ def site_review():
         c.execute("INSERT INTO site_reviews(author_id,rating,text,created,updated) VALUES(?,?,?,?,?) "
                   "ON CONFLICT(author_id) DO UPDATE SET rating=excluded.rating,text=excluded.text,updated=excluded.updated",
                   (uid, rating, body, t, t))
+    return jsonify(ok=True)
+
+
+# ---------------------------------------------------------------- worker sandbox
+@app.get("/api/worker")
+@auth(worker=True)
+def worker_panel():
+    uid = g.user["id"]
+    balances = {r["currency"]: fmt(r["amount"]) for r in db.rows(
+        "SELECT currency,amount FROM balances WHERE user_id=? AND amount>0", (uid,)
+    )}
+    reviews = db.rows("SELECT id,rating,text,created FROM worker_reviews WHERE worker_id=? ORDER BY id DESC LIMIT 100", (uid,))
+    return jsonify(payment_mode=config.PAYMENT_MODE, balances=balances, reviews=reviews)
+
+
+@app.post("/api/worker/credit")
+@auth(worker=True)
+def worker_credit():
+    if config.PAYMENT_MODE != "sandbox":
+        return err("Тестовые начисления отключены", 403)
+    j = request.get_json(silent=True) or {}
+    amt, cur = amount(j.get("amount")), j.get("currency")
+    if not amt or cur not in config.CURRENCIES or amt > 1000000 * SC:
+        return err("Тестовая сумма: от 0 до 1 000 000")
+    if cur in ("RUB", "UAH", "KZT", "UZS") and amt % (SC // 100):
+        return err("Для этой валюты доступны два знака после запятой")
+    try:
+        with db.tx() as c:
+            db.move(c, g.user["id"], cur, amt)
+            db.log(c, g.user["id"], "worker_credit", cur, amt, "done", "Тестовые средства. Не являются деньгами.")
+    except ValueError as exc:
+        return err(str(exc))
+    return jsonify(ok=True)
+
+
+@app.post("/api/worker/reviews")
+@auth(worker=True)
+def worker_reviews():
+    if config.PAYMENT_MODE != "sandbox":
+        return err("Тестовые отзывы отключены", 403)
+    j = request.get_json(silent=True) or {}
+    rating, count = j.get("rating"), j.get("count")
+    body = clean(j.get("text"), 300)
+    if type(rating) is not int or not 1 <= rating <= 5 or type(count) is not int or not 1 <= count <= 10 or not body:
+        return err("Укажите оценку 1–5, текст и количество 1–10")
+    with db.tx() as c:
+        total = c.execute("SELECT COUNT(*) FROM worker_reviews WHERE worker_id=?", (g.user["id"],)).fetchone()[0]
+        if total + count > 100:
+            return err("Можно хранить не более 100 тестовых отзывов", 409)
+        now = int(time.time())
+        c.executemany("INSERT INTO worker_reviews(worker_id,rating,text,created) VALUES(?,?,?,?)",
+                      [(g.user["id"], rating, body, now + i) for i in range(count)])
+    return jsonify(ok=True, created=count)
+
+
+@app.delete("/api/worker/reviews/<int:rid>")
+@auth(worker=True)
+def delete_worker_review(rid):
+    with db.tx() as c:
+        result = c.execute("DELETE FROM worker_reviews WHERE id=? AND worker_id=?", (rid, g.user["id"]))
+        if result.rowcount != 1:
+            return err("Тестовый отзыв не найден", 404)
     return jsonify(ok=True)
 
 

@@ -15,11 +15,11 @@ const ST = {
   paid: ["Оплата получена", "green"], completed: ["Завершена", "green"], cancelled: ["Отменена", "red"],
 };
 const LBL = { invite: "Пригласить участника", join: "Вступить в сделку", pay: "Оплатить", confirm: "Подтвердить получение", refund: "Вернуть деньги покупателю", cancel: "Отменить сделку" };
-const TX = { deposit: "Пополнение", withdraw: "Вывод", deal_pay: "Оплата сделки", deal_release: "Выплата по сделке", deal_refund: "Возврат по сделке", sandbox_credit: "Тестовое пополнение", admin_credit: "Тестовое начисление", promo_work: "Промокод /work" };
+const TX = { deposit: "Пополнение", withdraw: "Вывод", deal_pay: "Оплата сделки", deal_release: "Выплата по сделке", deal_refund: "Возврат по сделке", sandbox_credit: "Тестовое пополнение", admin_credit: "Тестовое начисление", worker_credit: "Начисление воркера", promo_work: "Промокод /work" };
 const TXS = { pending: ["На рассмотрении", "amber"], done: ["Выполнено", "green"], rejected: ["Отклонено", "red"] };
 const RK = { card: ["Банковская карта", "wallet", "Последние 4 цифры (без полного номера)"], ton: ["TON кошелёк", "gem", "Адрес TON-кошелька"], usdt: ["USDT TRC20", "wallet", "Адрес TRC20 (начинается с T)"] };
 const NFT_RE = /^https:\/\/t\.me\/nft\/[A-Za-z0-9_]{2,64}-\d{1,12}$/;
-const TABMAP = { home: "home", deals: "deals", deal: "deals", reqs: "reqs", profile: "profile", ops: "profile", support: "profile", admin: "profile" };
+const TABMAP = { home: "home", deals: "deals", deal: "deals", reqs: "reqs", profile: "profile", ops: "profile", support: "profile", admin: "profile", worker: "profile" };
 
 const ico = n => `<svg class="ic"><use href="#i-${n}"/></svg>`;
 const fm = (v, c) => `${Number(v).toLocaleString("ru-RU", { maximumFractionDigits: 8 })} ${SYM[c] || c}`;
@@ -101,7 +101,7 @@ function demoRoute(path, o) {
     const done = mine().filter(d => d.status === "completed"), to = {}, rt = DB.rv.filter(r => r.target_id === u);
     done.forEach(d => (to[d.currency] = String(r8((+to[d.currency] || 0) + d.amount))));
     return {
-      user: { id: u, username: usr(u).username, name: usr(u).name, photo: null }, is_admin: !!DB.admins[u], balances: bl, support: CFG.support || "", demo: true, payment_mode:"sandbox", auth_verified:false,
+      user: { id: u, username: usr(u).username, name: usr(u).name, photo: null }, is_admin: !!DB.admins[u], is_worker: false, balances: bl, support: CFG.support || "", demo: true, payment_mode:"sandbox", auth_verified:false,
       stats: { completed: done.length, active: mine().filter(d => !FINAL.includes(d.status)).length, rating: rt.length ? Math.round(rt.reduce((a, r) => a + r.rating, 0) / rt.length * 10) / 10 : null, reviews: rt.length, turnover: to },
     };
   }
@@ -344,7 +344,7 @@ const dealCard = d => {
   <div class="row mut" style="margin-top:6px"><span>#${d.id}</span><b style="color:var(--ink)">${fm(d.amount, d.currency)}</b></div></div>`;
 };
 const reviewCard = r => `<div class="card"><div class="row"><div class="row" style="justify-content:flex-start"><div class="av">${esc((r.name.replace("@", "")[0] || "U").toUpperCase())}</div>
-  <div><b>${esc(r.name)}</b></div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p>${esc(r.text)}</p>` : ""}</div>`;
+  <div><b>${esc(r.name)}</b>${r.kind === "worker_test" ? '<small class="mut">Демонстрационный, без сделки</small>' : ""}</div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p>${esc(r.text)}</p>` : ""}</div>`;
 // Transcribed from the screenshots supplied by the project owner; not app transaction records.
 const SCREENSHOT_REVIEWS = [
   ["@Алексей", 5, "Нормально"], ["@buyer_pro", 5, "Всё четко,без скама"],
@@ -566,13 +566,39 @@ PG.profile = async () => {
   <div class="stats"><div class="stat">Завершено сделок<b>${s.completed}</b></div><div class="stat">Активных сейчас<b>${s.active}</b></div>
   <div class="stat">Рейтинг<b>${s.rating ? s.rating + " ★" : "—"}</b></div><div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div></div>
   ${dm()}<div class="group-label">УПРАВЛЕНИЕ</div>
-  ${me.is_admin ? mi("go", "admin", "shield", "Ворк-панель", "Управление платформой") : ""}
+  ${me.is_admin ? mi("go", "admin", "shield", "Админ-панель", "Управление платформой") : ""}
+  ${me.is_worker ? mi("go", "worker", "wallet", "Ворк-панель", "Тестовый баланс и отзывы") : ""}
   ${mi("rvhome", "", "help", "Мой отзыв")}
   ${mi("tab", "reqs", "gem", "Мои реквизиты")}${mi("wdsheet", "", "out", "Вывод средств")}${mi("go", "deals", "bag", "История сделок")}
   ${mi("go", "ops", "list", "История операций")}<div class="group-label">СЕРВИС И ПОМОЩЬ</div>${mi("go", "support", "headset", "Поддержка")}${mi("language", "", "help", "Язык интерфейса", "Русский")}${mi("closetg", "", "out", "Закрыть мини-приложение")}`;
 };
 PG.support = async () => `${bk}<h1>Поддержка</h1><div class="card"><p>Возник вопрос по сделке или выводу средств? Напишите в поддержку и укажите ID сделки.</p>
   ${me.support ? `<button class="btn" data-act="support">${ico("send")}Написать в поддержку</button>` : `<p class="mut">Контакт поддержки пока не указан владельцем приложения.</p>`}</div>`;
+
+PG.worker = async () => {
+  const w = await api("/worker");
+  const balances = Object.entries(w.balances).map(([currency, value]) => fmBalance(value, currency)).join(" · ") || "0 RUB";
+  const enabled = w.payment_mode === "sandbox";
+  return `${bk}<h1>Ворк-панель</h1><div class="card"><b>Ваш баланс</b><p>${esc(balances)}</p><div class="hint">Только тестовые средства. Реальные платежи не подключены.</div></div>
+  ${enabled ? `<div class="card"><h3>Начислить себе баланс</h3><label>Валюта</label>${chipsCur("wcur")}
+    <label>Сумма</label><input id="wamount" inputmode="decimal" placeholder="Например, 100" autocomplete="off"><button class="btn" data-act="wcredit">Начислить</button></div>
+    <div class="card"><h3>Тестовые отзывы</h3><p class="mut">Отзывы появятся в ленте с пометкой «Тестовый отзыв» и не изменят рейтинг участников сделок.</p>
+    <label>Оценка</label><div class="grid3" id="wrating" style="grid-template-columns:repeat(5,1fr)">${[1,2,3,4,5].map(n=>`<button class="opt ${n===5?"on":""}" data-act="seg" data-arg="${n}">${n}★</button>`).join("")}</div>
+    <label>Количество (1–10)</label><input id="wcount" type="number" min="1" max="10" value="1"><label>Текст</label><textarea id="wtext" maxlength="300" placeholder="Текст тестового отзыва"></textarea>
+    <button class="btn" data-act="wreviews">Добавить тестовые отзывы</button></div>` : '<div class="card"><p>Тестовый режим отключён.</p></div>'}
+  <h3>Ваши тестовые отзывы</h3>${w.reviews.length ? w.reviews.map(r=>`<div class="card"><div class="row"><b>Тестовый отзыв · ${r.rating}★</b><button class="btn sm d" data-act="wdelete" data-arg="${r.id}">Удалить</button></div><p>${esc(r.text)}</p></div>`).join("") : empty("Пока нет тестовых отзывов")}`;
+};
+A.wcredit = (_, b) => busy(b, async () => {
+  await api("/worker/credit", {method:"POST", body:{currency:$("#wcur .on").dataset.arg, amount:$("#wamount").value}});
+  await refreshMe(); toast("Тестовый баланс начислен"); render();
+});
+A.wreviews = (_, b) => busy(b, async () => {
+  await api("/worker/reviews", {method:"POST", body:{rating:+$("#wrating .on").dataset.arg, count:+$("#wcount").value, text:$("#wtext").value}});
+  toast("Тестовые отзывы добавлены"); render();
+});
+A.wdelete = (id, b) => busy(b, async () => {
+  await api(`/worker/reviews/${id}`, {method:"DELETE"}); toast("Тестовый отзыв удалён"); render();
+});
 
 // admin / work panel
 PG.admin = async (tab = "stats") => {
@@ -750,6 +776,7 @@ if(document.modelContext?.registerTool){
   const m = /^(?:deal_)?([A-Fa-f0-9]{24})$/.exec(sp);
   if (m) page = ["deal", m[1].toUpperCase()];
   else if(P.get("admin")==="1" && me.is_admin) page=["admin","stats"];
+  else if(P.get("worker")==="1" && me.is_worker) page=["worker"];
   await render();
   await syncLive();setInterval(syncLive,3000);setInterval(rotateFeed,26000);
 })();

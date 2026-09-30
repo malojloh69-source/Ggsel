@@ -15,7 +15,7 @@ class DealTests(unittest.TestCase):
  def setUp(self):
   self.c=app.test_client()
   with db.tx() as c:
-   for table in ['deal_events','reviews','site_reviews','promo_claims','txs','requisites','deals','balances','admins','users']:
+   for table in ['deal_events','reviews','site_reviews','worker_reviews','promo_claims','txs','requisites','deals','balances','workers','admins','users']:
     c.execute('DELETE FROM '+table)
   db.grant_admin(1)
   config.DEV_MODE=True;config.PAYMENT_MODE='sandbox'
@@ -139,34 +139,63 @@ class DealTests(unittest.TestCase):
      self.assertEqual(payload['url'],'https://bot-example.bothost.tech/telegram/webhook')
      self.assertEqual(payload['secret_token'],webhook_secret())
      self.assertEqual(config.BOT_USERNAME,'ActualBot')
- def test_work_shows_saved_balance_and_admin_command_persists(self):
+ def test_work_opens_worker_panel_and_admin_command_is_separate(self):
   sent=[]
   def call(method,payload):sent.append((method,payload))
   with patch.object(bot,'telegram',side_effect=call):
    update=lambda uid,cmd:{'message':{'chat':{'id':uid,'type':'private'},'from':{'id':uid,'first_name':'User'},'text':cmd}}
-   with db.tx() as c:
-    db.move(c,2,'RUB',12550 * (db.SCALE // 100))
-    db.move(c,2,'TON',2 * db.SCALE)
+   self.assertEqual(self.req('/api/worker',2).status_code,403)
    bot.handle(update(2,'/work'))
    bot.handle(update(2,'/work'))
-   self.assertEqual(sent[0][1]['text'],'Баланс: 125.5 RUB, 2 TON')
+   self.assertEqual(sent[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'],config.PUBLIC_BASE_URL+'/?worker=1')
    self.assertEqual(sent[1][1]['text'],sent[0][1]['text'])
-   self.assertNotIn('reply_markup',sent[0][1])
-   self.assertEqual(self.req('/api/me',2).json['balances']['RUB'],'125.5')
+   self.assertEqual(db.row('SELECT COUNT(*) n FROM workers WHERE user_id=2')['n'],1)
+   self.assertEqual(self.req('/api/worker',2).status_code,200)
+   self.assertTrue(self.req('/api/me',2).json['is_worker'])
    self.assertEqual(db.row('SELECT COUNT(*) n FROM txs WHERE user_id=2')['n'],0)
-   bot.handle(update(3,'/work'))
-   self.assertEqual(sent[-1][1]['text'],'Баланс: 0 RUB')
    self.assertEqual(self.req('/api/admin/stats',2).status_code,403)
+   with db.tx() as c:c.execute('UPDATE users SET blocked=1 WHERE id=2')
+   self.assertEqual(self.req('/api/worker',2).status_code,403)
+   bot.handle(update(3,'/support'))
+   with db.tx() as c:c.execute('UPDATE users SET blocked=1 WHERE id=3')
+   bot.handle(update(3,'/work'))
+   self.assertFalse(db.is_worker(3))
+   with db.tx() as c:c.execute('UPDATE users SET blocked=0 WHERE id=2')
    bot.handle(update(2,'/ClezzyKryt'))
    self.assertEqual(sent[-1][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'],config.PUBLIC_BASE_URL+'/?admin=1')
   self.assertEqual(self.req('/api/admin/stats',2).status_code,200)
   db.init()
   self.assertTrue(db.is_admin(2))
+  self.assertTrue(db.is_worker(2))
   self.assertEqual(self.req('/api/me',2).json['is_admin'],True)
   self.assertEqual(self.req('/api/admin/users/2/block',1,'POST',{'blocked':True}).status_code,400)
   stats=self.req('/api/admin/stats',1).json
   self.assertEqual(stats['users'],3)
   self.assertEqual(stats['deals'],0)
+ def test_worker_credit_and_test_reviews(self):
+  db.grant_worker(2)
+  self.assertEqual(self.req('/api/worker/credit',3,'POST',{'amount':'1','currency':'RUB'}).status_code,403)
+  self.assertEqual(self.req('/api/worker/credit',2,'POST',{'amount':'125.50','currency':'RUB'}).status_code,200)
+  self.assertEqual(self.req('/api/me',2).json['balances']['RUB'],'125.5')
+  self.assertEqual(self.req('/api/me',3).json['balances']['RUB'],'0')
+  self.assertEqual(db.row('SELECT type FROM txs WHERE user_id=2')['type'],'worker_credit')
+  self.assertEqual(self.req('/api/worker/credit',2,'POST',{'amount':'0.001','currency':'RUB'}).status_code,400)
+  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'count':3,'text':'Пробный отзыв'}).json['created'],3)
+  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'count':11,'text':'Пробный отзыв'}).status_code,400)
+  panel=self.req('/api/worker',2).json
+  self.assertEqual(len(panel['reviews']),3)
+  self.assertEqual(panel['balances']['RUB'],'125.5')
+  home=self.req('/api/home',3).json
+  self.assertEqual(home['reviews'][0]['kind'],'worker_test')
+  self.assertEqual(home['reviews'][0]['name'],'Тестовый отзыв')
+  self.assertIsNone(self.req('/api/me',2).json['stats']['rating'])
+  db.grant_worker(3)
+  rid=panel['reviews'][0]['id']
+  self.assertEqual(self.req(f'/api/worker/reviews/{rid}',3,'DELETE').status_code,404)
+  self.assertEqual(self.req(f'/api/worker/reviews/{rid}',2,'DELETE').status_code,200)
+  config.PAYMENT_MODE='disabled'
+  self.assertEqual(self.req('/api/worker/credit',2,'POST',{'amount':'1','currency':'RUB'}).status_code,403)
+  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'count':1,'text':'Проба'}).status_code,403)
  def test_site_review_and_turnover_summary(self):
   self.assertEqual(self.req('/api/reviews/mine',2).json,None)
   self.assertEqual(self.req('/api/reviews/mine',2,'POST',{'rating':5,'text':'Мой отзыв'}).status_code,200)

@@ -10,6 +10,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT, first_name TEXT, photo TEXT,
   blocked INTEGER NOT NULL DEFAULT 0, created INTEGER);
 CREATE TABLE IF NOT EXISTS admins(user_id INTEGER PRIMARY KEY, granted_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS workers(user_id INTEGER PRIMARY KEY, granted_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS balances(user_id INTEGER, currency TEXT,
   amount INTEGER NOT NULL DEFAULT 0 CHECK(amount>=0), PRIMARY KEY(user_id,currency));
 CREATE TABLE IF NOT EXISTS deals(id TEXT PRIMARY KEY, creator_id INTEGER, seller_id INTEGER, buyer_id INTEGER,
@@ -21,6 +22,10 @@ CREATE TABLE IF NOT EXISTS reviews(id INTEGER PRIMARY KEY AUTOINCREMENT, deal_id
   target_id INTEGER, rating INTEGER, text TEXT, created INTEGER, UNIQUE(deal_id,author_id));
 CREATE TABLE IF NOT EXISTS site_reviews(author_id INTEGER PRIMARY KEY, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
   text TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS worker_reviews(id INTEGER PRIMARY KEY AUTOINCREMENT,
+  worker_id INTEGER NOT NULL, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+  text TEXT NOT NULL, created INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS ix_worker_reviews_worker ON worker_reviews(worker_id,id);
 CREATE TABLE IF NOT EXISTS promo_claims(user_id INTEGER NOT NULL, code TEXT NOT NULL, created INTEGER NOT NULL,
   PRIMARY KEY(user_id,code));
 CREATE TABLE IF NOT EXISTS deal_events(id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,6 +98,15 @@ def is_admin(uid):
 def grant_admin(uid):
     with tx() as c:
         c.execute("INSERT OR IGNORE INTO admins(user_id,granted_at) VALUES(?,?)", (uid, int(time.time())))
+
+
+def is_worker(uid):
+    return row("SELECT 1 FROM workers WHERE user_id=?", (uid,)) is not None
+
+
+def grant_worker(uid):
+    with tx() as c:
+        c.execute("INSERT OR IGNORE INTO workers(user_id,granted_at) VALUES(?,?)", (uid, int(time.time())))
 
 
 def upsert_user(tg):

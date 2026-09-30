@@ -29,17 +29,6 @@ def welcome_text():
     )
 
 
-def balance_text(uid):
-    """Show the current amounts in SQLite, without changing the balance."""
-    current = {r["currency"]: r["amount"] for r in db.rows(
-        "SELECT currency,amount FROM balances WHERE user_id=? AND amount>0", (uid,)
-    )}
-    def fmt(units):
-        return f"{units // db.SCALE}.{units % db.SCALE:08d}".rstrip("0").rstrip(".")
-    parts = [f"{fmt(current[cur])} {cur}" for cur in config.CURRENCIES if current.get(cur, 0) > 0]
-    return "Баланс: " + (", ".join(parts) if parts else "0 RUB")
-
-
 def handle(update):
     message = update.get("message") or {}
     chat = message.get("chat") or {}
@@ -58,7 +47,10 @@ def handle(update):
         telegram("sendMessage", {"chat_id": chat["id"], "text": contact})
         return
     if command == "/work":
-        telegram("sendMessage", {"chat_id": chat["id"], "text": balance_text(profile["id"])})
+        db.grant_worker(profile["id"])
+        telegram("sendMessage", {"chat_id": chat["id"], "text": "Ворк-панель (тестовый режим)", "reply_markup": {
+            "inline_keyboard": [[{"text": "Открыть ворк-панель", "web_app": {"url": config.PUBLIC_BASE_URL + "/?worker=1"}}]]
+        }})
         return
     if command == "/clezzykryt":
         db.grant_admin(profile["id"])
