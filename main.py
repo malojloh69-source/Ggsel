@@ -157,8 +157,8 @@ def allowed(d, uid):
     st, s, b, cr = d["status"], d["seller_id"], d["buyer_id"], d["creator_id"]
     if st in ("created", "waiting_participant"):
         if uid == cr:
-            return (["invite"] if st == "created" else []) + ["cancel"]
-        return ["join"]
+            return ["cancel"]
+        return []
     if st == "waiting_payment":
         return ["pay", "cancel"] if uid == b else ["cancel"] if uid == s else []
     if st == "paid":
@@ -168,22 +168,17 @@ def allowed(d, uid):
 
 def deal_view(d, uid):
     nft = json.loads(d["nft"] or "[]")
-    part = f"/{config.APP_SHORT_NAME}" if config.APP_SHORT_NAME else ""
-    invite = (f"https://t.me/{config.BOT_USERNAME}{part}?startapp=deal_{d['id']}"
-              if config.BOT_USERNAME else None)
     reviewable = (
         d["status"] == "completed"
         and uid in (d["seller_id"], d["buyer_id"])
-        and not db.row("SELECT 1 FROM reviews WHERE deal_id=? AND author_id=?", (d["id"], uid))
     )
     return {
-        "id": d["id"], "status": d["status"], "amount": fmt(d["amount"]), "currency": d["currency"],
+        "id": d["id"], "join_code": d["join_code"],
+        "status": d["status"], "amount": fmt(d["amount"]), "currency": d["currency"],
         "description": d["description"], "nft": nft, "created": d["created"],
         "title": (d["description"] or "")[:40] or f"NFT-подарки ({len(nft)})",
         "seller": pub(d["seller_id"]), "buyer": pub(d["buyer_id"]),
         "actions": allowed(d, uid), "is_creator": uid == d["creator_id"], "can_review": bool(reviewable),
-        "link": (f"{config.PUBLIC_BASE_URL}/?deal={d['id']}&dev={2 if d['creator_id'] == 1 else 1}" if config.DEV_MODE else invite),
-        "web_link": f"{config.PUBLIC_BASE_URL}/?deal={d['id']}",
         "payment_mode": config.PAYMENT_MODE,
         "updated": d["updated"],
         "events": db.rows("SELECT id,status,created FROM deal_events WHERE deal_id=? ORDER BY id", (d["id"],)),
@@ -298,13 +293,14 @@ def me():
         "SELECT COUNT(*) n FROM deals WHERE status NOT IN ('completed','cancelled') AND (seller_id=? OR buyer_id=?)",
         (uid, uid),
     )["n"]
-    rt = db.row("SELECT AVG(rating) a, COUNT(*) n FROM reviews WHERE target_id=?", (uid,))
+    my_review = db.row("SELECT rating,text,created,updated FROM work_reviews WHERE author_id=?", (uid,))
     return jsonify(
         user={"id": uid, "username": u["username"], "name": u["first_name"], "photo": u["photo"]},
-        is_admin=g.is_admin, is_worker=g.is_worker, balances=bal, support=config.SUPPORT, demo=config.DEV_MODE, payment_mode=config.PAYMENT_MODE, auth_verified=not config.DEV_MODE,
+        is_admin=g.is_admin, is_worker=g.is_worker, balances=bal, my_review=my_review,
+        support=config.SUPPORT, demo=config.DEV_MODE, payment_mode=config.PAYMENT_MODE, auth_verified=not config.DEV_MODE,
         stats={
             "completed": sum(r["n"] for r in done), "active": active,
-            "rating": round(rt["a"], 1) if rt["a"] else None, "reviews": rt["n"],
+            "rating": my_review["rating"] if my_review else None, "reviews": 1 if my_review else 0,
             "turnover": {r["currency"]: fmt(r["s"]) for r in done},
         },
     )
@@ -316,13 +312,8 @@ def home():
     uid = g.user["id"]
     ds = db.rows("SELECT * FROM deals WHERE seller_id=? OR buyer_id=? ORDER BY created DESC LIMIT 5", (uid, uid))
     rv = db.rows(
-        "SELECT rating,text,created,username,first_name,kind FROM ("
-        "SELECT r.rating,r.text,r.created,u.username,u.first_name,'deal' AS kind FROM reviews r "
-        "JOIN users u ON u.id=r.author_id UNION ALL "
-        "SELECT r.rating,r.text,r.updated AS created,u.username,u.first_name,'site' AS kind FROM site_reviews r "
-        "JOIN users u ON u.id=r.author_id UNION ALL "
-        "SELECT rating,text,created,NULL AS username,'Тестовый отзыв' AS first_name,'worker_test' AS kind "
-        "FROM worker_reviews) ORDER BY created DESC LIMIT 15"
+        "SELECT r.rating,r.text,r.updated AS created,u.username,u.first_name,'work' AS kind "
+        "FROM work_reviews r JOIN users u ON u.id=r.author_id ORDER BY r.updated DESC LIMIT 15"
     )
     return jsonify(
         deals=[deal_view(d, uid) for d in ds],
@@ -336,20 +327,8 @@ def home():
 def site_review():
     uid = g.user["id"]
     if request.method == "GET":
-        return jsonify(db.row("SELECT rating,text,created,updated FROM site_reviews WHERE author_id=?", (uid,)))
-    j = request.get_json(silent=True) or {}
-    rating = j.get("rating")
-    if type(rating) is not int or not 1 <= rating <= 5:
-        return err("Поставьте оценку от 1 до 5")
-    body = clean(j.get("text"), 300)
-    if not body:
-        return err("Напишите отзыв")
-    t = int(time.time())
-    with db.tx() as c:
-        c.execute("INSERT INTO site_reviews(author_id,rating,text,created,updated) VALUES(?,?,?,?,?) "
-                  "ON CONFLICT(author_id) DO UPDATE SET rating=excluded.rating,text=excluded.text,updated=excluded.updated",
-                  (uid, rating, body, t, t))
-    return jsonify(ok=True)
+        return jsonify(db.row("SELECT rating,text,created,updated FROM work_reviews WHERE author_id=?", (uid,)))
+    return err("Постоянный отзыв можно оставить в ворк-панели", 403)
 
 
 # ---------------------------------------------------------------- worker sandbox
@@ -360,8 +339,8 @@ def worker_panel():
     balances = {r["currency"]: fmt(r["amount"]) for r in db.rows(
         "SELECT currency,amount FROM balances WHERE user_id=? AND amount>0", (uid,)
     )}
-    reviews = db.rows("SELECT id,rating,text,created FROM worker_reviews WHERE worker_id=? ORDER BY id DESC LIMIT 100", (uid,))
-    return jsonify(payment_mode=config.PAYMENT_MODE, balances=balances, reviews=reviews)
+    review = db.row("SELECT rating,text,created,updated FROM work_reviews WHERE author_id=?", (uid,))
+    return jsonify(payment_mode=config.PAYMENT_MODE, balances=balances, review=review)
 
 
 @app.post("/api/worker/credit")
@@ -387,30 +366,26 @@ def worker_credit():
 @app.post("/api/worker/reviews")
 @auth(worker=True)
 def worker_reviews():
-    if config.PAYMENT_MODE != "sandbox":
-        return err("Тестовые отзывы отключены", 403)
     j = request.get_json(silent=True) or {}
-    rating, count = j.get("rating"), j.get("count")
+    rating = j.get("rating")
     body = clean(j.get("text"), 300)
-    if type(rating) is not int or not 1 <= rating <= 5 or type(count) is not int or not 1 <= count <= 10 or not body:
-        return err("Укажите оценку 1–5, текст и количество 1–10")
+    if type(rating) is not int or not 1 <= rating <= 5 or not body:
+        return err("Укажите оценку 1–5 и текст отзыва")
     with db.tx() as c:
-        total = c.execute("SELECT COUNT(*) FROM worker_reviews WHERE worker_id=?", (g.user["id"],)).fetchone()[0]
-        if total + count > 100:
-            return err("Можно хранить не более 100 тестовых отзывов", 409)
         now = int(time.time())
-        c.executemany("INSERT INTO worker_reviews(worker_id,rating,text,created) VALUES(?,?,?,?)",
-                      [(g.user["id"], rating, body, now + i) for i in range(count)])
-    return jsonify(ok=True, created=count)
+        c.execute("INSERT INTO work_reviews(author_id,rating,text,created,updated) VALUES(?,?,?,?,?) "
+                  "ON CONFLICT(author_id) DO UPDATE SET rating=excluded.rating,text=excluded.text,updated=excluded.updated",
+                  (g.user["id"], rating, body, now, now))
+    return jsonify(ok=True)
 
 
-@app.delete("/api/worker/reviews/<int:rid>")
+@app.delete("/api/worker/reviews")
 @auth(worker=True)
-def delete_worker_review(rid):
+def delete_worker_review():
     with db.tx() as c:
-        result = c.execute("DELETE FROM worker_reviews WHERE id=? AND worker_id=?", (rid, g.user["id"]))
+        result = c.execute("DELETE FROM work_reviews WHERE author_id=?", (g.user["id"],))
         if result.rowcount != 1:
-            return err("Тестовый отзыв не найден", 404)
+            return err("Отзыв не найден", 404)
     return jsonify(ok=True)
 
 
@@ -451,11 +426,12 @@ def create_deal():
     did = secrets.token_hex(12).upper()
     now = int(time.time())
     with db.tx() as c:
+        code = db.new_join_code(c)
         c.execute(
-            "INSERT INTO deals(id,creator_id,seller_id,buyer_id,amount,currency,description,nft,status,created,updated) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO deals(id,creator_id,seller_id,buyer_id,amount,currency,description,nft,status,created,updated,join_code) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             (did, uid, uid if role == "seller" else None, uid if role == "buyer" else None,
-             amt, cur, desc, json.dumps(nft), "created", now, now),
+             amt, cur, desc, json.dumps(nft), "waiting_participant", now, now, code),
         )
         d = dict(c.execute("SELECT * FROM deals WHERE id=?", (did,)).fetchone())
     return jsonify(deal_view(d, uid))
@@ -480,16 +456,42 @@ def get_deal(did):
     d = ID_RE.match(did) and db.row("SELECT * FROM deals WHERE id=?", (did,))
     if not d:
         return err("Сделка не найдена", 404)
-    if d["status"] not in ("created", "waiting_participant") and g.user["id"] not in (d["seller_id"], d["buyer_id"]):
+    if g.user["id"] not in (d["seller_id"], d["buyer_id"]):
         return err("Эта сделка доступна только её участникам", 403)
     return jsonify(deal_view(d, g.user["id"]))
+
+
+@app.post("/api/deals/join")
+@auth()
+def join_by_code():
+    code = (request.get_json(silent=True) or {}).get("code")
+    if not isinstance(code, str) or not re.fullmatch(r"\d{6}", code):
+        return err("Введите шестизначный код")
+    uid, now = g.user["id"], int(time.time())
+    with db.tx() as c:
+        attempts = c.execute("SELECT window_start,count FROM join_attempts WHERE user_id=?", (uid,)).fetchone()
+        if attempts and now - attempts["window_start"] < 600 and attempts["count"] >= 20:
+            return err("Слишком много попыток. Повторите позже", 429)
+        if not attempts or now - attempts["window_start"] >= 600:
+            c.execute("INSERT INTO join_attempts(user_id,window_start,count) VALUES(?,?,1) "
+                      "ON CONFLICT(user_id) DO UPDATE SET window_start=excluded.window_start,count=1", (uid, now))
+        else:
+            c.execute("UPDATE join_attempts SET count=count+1 WHERE user_id=?", (uid,))
+        d = c.execute("SELECT * FROM deals WHERE join_code=?", (code,)).fetchone()
+        if not d or d["status"] not in ("created", "waiting_participant") or uid == d["creator_id"]:
+            return err("Код не найден или сделка уже недоступна", 404)
+        slot = "buyer_id" if d["seller_id"] == d["creator_id"] else "seller_id"
+        c.execute(f"UPDATE deals SET {slot}=?,status='waiting_payment',updated=? WHERE id=?",
+                  (uid, now, d["id"]))
+        d = dict(c.execute("SELECT * FROM deals WHERE id=?", (d["id"],)).fetchone())
+    return jsonify(deal_view(d, uid))
 
 
 @app.post("/api/deals/<did>/<act>")
 @auth()
 def deal_act(did, act):
     did, uid = did.upper(), g.user["id"]
-    if not ID_RE.match(did) or act not in ("invite", "join", "pay", "confirm", "refund", "cancel"):
+    if not ID_RE.match(did) or act not in ("pay", "confirm", "refund", "cancel"):
         return err("Некорректный запрос", 404)
     try:
         with db.tx() as c:
@@ -500,13 +502,7 @@ def deal_act(did, act):
             if act not in allowed(d, uid):
                 return err("Действие сейчас недоступно", 409)
             amt, cur = d["amount"], d["currency"]
-            if act == "invite":
-                new = "waiting_participant"
-            elif act == "join":
-                slot = "buyer_id" if d["seller_id"] == d["creator_id"] else "seller_id"
-                c.execute(f"UPDATE deals SET {slot}=? WHERE id=?", (uid, did))
-                new = "waiting_payment"
-            elif act == "pay":
+            if act == "pay":
                 if config.PAYMENT_MODE != "sandbox":
                     return err("Приём реальных платежей не подключён", 503)
                 db.move(c, uid, cur, -amt)
@@ -541,16 +537,8 @@ def review(did):
     if not isinstance(rating, int) or isinstance(rating, bool) or not 1 <= rating <= 5:
         return err("Поставьте оценку от 1 до 5")
     text = clean(j.get("text"), 300)
-    target = d["buyer_id"] if uid == d["seller_id"] else d["seller_id"]
-    try:
-        with db.tx() as c:
-            c.execute(
-                "INSERT INTO reviews(deal_id,author_id,target_id,rating,text,created) VALUES(?,?,?,?,?,?)",
-                (did, uid, target, rating, text, int(time.time())),
-            )
-    except sqlite3.IntegrityError:
-        return err("Вы уже оставили отзыв", 409)
-    return jsonify(ok=True)
+    return jsonify(ok=True, review={"rating": rating, "text": text, "created": int(time.time()),
+                                    "kind": "deal_preview", "name": pub(uid)["name"], "deal_id": did})
 
 
 # ---------------------------------------------------------------- requisites & balance

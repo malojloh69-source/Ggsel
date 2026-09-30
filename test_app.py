@@ -15,7 +15,7 @@ class DealTests(unittest.TestCase):
  def setUp(self):
   self.c=app.test_client()
   with db.tx() as c:
-   for table in ['deal_events','reviews','site_reviews','worker_reviews','promo_claims','txs','requisites','deals','balances','workers','admins','users']:
+   for table in ['deal_events','reviews','site_reviews','worker_reviews','work_reviews','join_attempts','promo_claims','txs','requisites','deals','balances','workers','admins','users']:
     c.execute('DELETE FROM '+table)
   db.grant_admin(1)
   config.DEV_MODE=True;config.PAYMENT_MODE='sandbox'
@@ -25,13 +25,17 @@ class DealTests(unittest.TestCase):
   r=self.req('/api/deals',uid,'POST',{'role':role,'amount':'125.50','currency':'RUB','description':'NFT-подарок','nft':['https://t.me/nft/SpyAgaric-27641']})
   self.assertEqual(r.status_code,200,r.json)
   return r.json['id']
- def act(self,d,a,u=1):return self.req(f'/api/deals/{d}/{a}',u,'POST')
+ def act(self,d,a,u=1):
+  if a=='join':
+   code=db.row('SELECT join_code FROM deals WHERE id=?',(d,))['join_code']
+   return self.req('/api/deals/join',u,'POST',{'code':code})
+  return self.req(f'/api/deals/{d}/{a}',u,'POST')
  def fund(self,u=2):return self.req('/api/sandbox/fund',u,'POST',{'amount':'1000','currency':'RUB'})
  def paid(self):
   d=self.create();self.act(d,'join',2);self.fund();self.assertEqual(self.act(d,'pay',2).status_code,200);return d
  def test_complete_shared_deal_and_live(self):
   d=self.create();self.assertEqual(len(d),24)
-  self.assertIn(d,self.req('/api/deals/'+d).json['link'])
+  self.assertRegex(self.req('/api/deals/'+d).json['join_code'],r'^\d{6}$')
   self.assertEqual(self.act(d,'join',2).json['status'],'waiting_payment')
   self.assertEqual(self.act(d,'pay',1).status_code,409)
   self.assertEqual(self.act(d,'pay',2).status_code,400)
@@ -50,7 +54,7 @@ class DealTests(unittest.TestCase):
  def test_third_party_denied_after_join(self):
   d=self.create();self.act(d,'join',2)
   self.assertEqual(self.req('/api/deals/'+d,3).status_code,403)
-  self.assertEqual(self.act(d,'join',3).status_code,409)
+  self.assertEqual(self.act(d,'join',3).status_code,404)
   self.assertEqual(self.req('/api/live',3).json['items'],[])
  def test_buyer_created_deal(self):
   d=self.create('buyer',2);self.assertEqual(self.act(d,'join',1).status_code,200)
@@ -98,7 +102,9 @@ class DealTests(unittest.TestCase):
   self.act(d,'confirm',2)
   self.assertEqual(self.req('/api/deals/'+d+'/review',3,'POST',data).status_code,403)
   self.assertEqual(self.req('/api/deals/'+d+'/review',2,'POST',data).status_code,200)
-  self.assertEqual(self.req('/api/deals/'+d+'/review',2,'POST',data).status_code,409)
+  self.assertEqual(self.req('/api/deals/'+d+'/review',2,'POST',data).status_code,200)
+  self.assertEqual(db.row('SELECT COUNT(*) n FROM reviews')['n'],0)
+  self.assertEqual(self.req('/api/home',2).json['reviews'],[])
  def test_bot_start_has_web_app_and_telegram_profile(self):
   old_url,old_support=config.PUBLIC_BASE_URL,config.SUPPORT
   config.PUBLIC_BASE_URL='https://example.test/app'
@@ -172,7 +178,7 @@ class DealTests(unittest.TestCase):
   stats=self.req('/api/admin/stats',1).json
   self.assertEqual(stats['users'],3)
   self.assertEqual(stats['deals'],0)
- def test_worker_credit_and_test_reviews(self):
+ def test_worker_credit_and_persisted_review(self):
   db.grant_worker(2)
   self.assertEqual(self.req('/api/worker/credit',3,'POST',{'amount':'1','currency':'RUB'}).status_code,403)
   self.assertEqual(self.req('/api/worker/credit',2,'POST',{'amount':'125.50','currency':'RUB'}).status_code,200)
@@ -180,35 +186,67 @@ class DealTests(unittest.TestCase):
   self.assertEqual(self.req('/api/me',3).json['balances']['RUB'],'0')
   self.assertEqual(db.row('SELECT type FROM txs WHERE user_id=2')['type'],'worker_credit')
   self.assertEqual(self.req('/api/worker/credit',2,'POST',{'amount':'0.001','currency':'RUB'}).status_code,400)
-  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'count':3,'text':'Пробный отзыв'}).json['created'],3)
-  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'count':11,'text':'Пробный отзыв'}).status_code,400)
+  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'text':'Настоящий отзыв'}).status_code,200)
+  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':4,'text':'Исправленный отзыв'}).status_code,200)
+  self.assertEqual(db.row('SELECT COUNT(*) n FROM work_reviews')['n'],1)
   panel=self.req('/api/worker',2).json
-  self.assertEqual(len(panel['reviews']),3)
+  self.assertEqual(panel['review']['text'],'Исправленный отзыв')
   self.assertEqual(panel['balances']['RUB'],'125.5')
   home=self.req('/api/home',3).json
-  self.assertEqual(home['reviews'][0]['kind'],'worker_test')
-  self.assertEqual(home['reviews'][0]['name'],'Тестовый отзыв')
-  self.assertIsNone(self.req('/api/me',2).json['stats']['rating'])
+  self.assertEqual(home['reviews'][0]['kind'],'work')
+  self.assertEqual(home['reviews'][0]['name'],'@dev2')
+  self.assertEqual(self.req('/api/me',2).json['stats']['rating'],4)
+  db.init()
+  self.assertEqual(self.req('/api/worker',2).json['review']['rating'],4)
   db.grant_worker(3)
-  rid=panel['reviews'][0]['id']
-  self.assertEqual(self.req(f'/api/worker/reviews/{rid}',3,'DELETE').status_code,404)
-  self.assertEqual(self.req(f'/api/worker/reviews/{rid}',2,'DELETE').status_code,200)
+  self.assertEqual(self.req('/api/worker/reviews',3,'DELETE').status_code,404)
+  self.assertEqual(self.req('/api/worker/reviews',2,'DELETE').status_code,200)
+  self.assertEqual(self.req('/api/home',3).json['reviews'],[])
   config.PAYMENT_MODE='disabled'
   self.assertEqual(self.req('/api/worker/credit',2,'POST',{'amount':'1','currency':'RUB'}).status_code,403)
-  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'count':1,'text':'Проба'}).status_code,403)
+  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'text':'Проба'}).status_code,200)
  def test_site_review_and_turnover_summary(self):
   self.assertEqual(self.req('/api/reviews/mine',2).json,None)
-  self.assertEqual(self.req('/api/reviews/mine',2,'POST',{'rating':5,'text':'Мой отзыв'}).status_code,200)
-  self.assertEqual(self.req('/api/reviews/mine',2,'POST',{'rating':4,'text':'Исправлено'}).status_code,200)
-  self.assertEqual(self.req('/api/reviews/mine',2).json['text'],'Исправлено')
-  self.assertEqual([r['kind'] for r in self.req('/api/home',1).json['reviews']],['site'])
+  self.assertEqual(self.req('/api/reviews/mine',2,'POST',{'rating':5,'text':'Мой отзыв'}).status_code,403)
+  self.assertIsNone(self.req('/api/reviews/mine',2).json)
+  self.assertEqual(self.req('/api/home',1).json['reviews'],[])
   d=self.paid();self.act(d,'confirm',2)
   stats=self.req('/api/admin/stats',1).json
   self.assertEqual(stats['deals'],1)
   self.assertEqual(stats['completed'],1)
   self.assertEqual(stats['turnover']['RUB'],'125.5')
-  with patch.object(config,'DEV_MODE',False),patch.object(config,'BOT_USERNAME','ActualBot'),patch.object(config,'APP_SHORT_NAME',''):
-   self.assertEqual(deal_view(db.row('SELECT * FROM deals WHERE id=?',(d,)),1)['link'],f'https://t.me/ActualBot?startapp=deal_{d}')
+  view=deal_view(db.row('SELECT * FROM deals WHERE id=?',(d,)),1)
+  self.assertRegex(view['join_code'],r'^\d{6}$')
+  self.assertNotIn('link',view)
+ def test_join_code_is_unique_and_required(self):
+  first=self.create()
+  second=self.create('buyer',3)
+  code=db.row('SELECT join_code FROM deals WHERE id=?',(first,))['join_code']
+  other=db.row('SELECT join_code FROM deals WHERE id=?',(second,))['join_code']
+  self.assertRegex(code,r'^\d{6}$')
+  self.assertNotEqual(code,other)
+  self.assertEqual(self.req('/api/deals/'+first,2).status_code,403)
+  self.assertEqual(self.req('/api/deals/'+first+'/join',2,'POST').status_code,404)
+  self.assertEqual(self.req('/api/deals/join',2,'POST',{'code':'12345'}).status_code,400)
+  self.assertEqual(self.req('/api/deals/join',1,'POST',{'code':code}).status_code,404)
+  self.assertEqual(self.req('/api/deals/join',2,'POST',{'code':code}).json['id'],first)
+  self.assertEqual(self.req('/api/deals/join',3,'POST',{'code':code}).status_code,404)
+ def test_join_code_rate_limit(self):
+  for _ in range(20):
+   self.assertEqual(self.req('/api/deals/join',2,'POST',{'code':'000000'}).status_code,404)
+  self.assertEqual(self.req('/api/deals/join',2,'POST',{'code':'000000'}).status_code,429)
+ def test_existing_database_receives_join_codes(self):
+  with tempfile.TemporaryDirectory() as directory:
+   path=os.path.join(directory,'old.db')
+   with sqlite3.connect(path) as c:
+    c.execute('CREATE TABLE deals(id TEXT PRIMARY KEY,creator_id INTEGER,seller_id INTEGER,buyer_id INTEGER,amount INTEGER,currency TEXT,description TEXT,nft TEXT,status TEXT,created INTEGER,updated INTEGER)')
+    c.execute("INSERT INTO deals VALUES('OLD',1,1,NULL,100,'RUB','old','[]','created',1,1)")
+   with patch.object(config,'DB_PATH',path):
+    db.init()
+    code=db.row('SELECT join_code FROM deals WHERE id=?',('OLD',))['join_code']
+    self.assertRegex(code,r'^\d{6}$')
+    db.init()
+    self.assertEqual(db.row('SELECT join_code FROM deals WHERE id=?',('OLD',))['join_code'],code)
  def test_auth_no_implicit_dev_mode(self):
   config.DEV_MODE=False
   self.assertEqual(self.req('/api/me',1).status_code,401)

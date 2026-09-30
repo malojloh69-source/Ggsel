@@ -14,8 +14,8 @@ const ST = {
   created: ["Создана", "gray"], waiting_participant: ["Ожидает участника", "amber"], waiting_payment: ["Ожидает оплату", "blue"],
   paid: ["Оплата получена", "green"], completed: ["Завершена", "green"], cancelled: ["Отменена", "red"],
 };
-const LBL = { invite: "Пригласить участника", join: "Вступить в сделку", pay: "Оплатить", confirm: "Подтвердить получение", refund: "Вернуть деньги покупателю", cancel: "Отменить сделку" };
-const TX = { deposit: "Пополнение", withdraw: "Вывод", deal_pay: "Оплата сделки", deal_release: "Выплата по сделке", deal_refund: "Возврат по сделке", sandbox_credit: "Тестовое пополнение", admin_credit: "Тестовое начисление", worker_credit: "Начисление воркера", promo_work: "Промокод /work" };
+const LBL = { pay: "Оплатить", confirm: "Подтвердить получение", refund: "Вернуть деньги покупателю", cancel: "Отменить сделку" };
+const TX = { deposit: "Пополнение", withdraw: "Вывод", deal_pay: "Оплата сделки", deal_release: "Выплата по сделке", deal_refund: "Возврат по сделке", sandbox_credit: "Пополнение баланса", admin_credit: "Начисление", worker_credit: "Начисление" };
 const TXS = { pending: ["На рассмотрении", "amber"], done: ["Выполнено", "green"], rejected: ["Отклонено", "red"] };
 const RK = { card: ["Банковская карта", "wallet", "Последние 4 цифры (без полного номера)"], ton: ["TON кошелёк", "gem", "Адрес TON-кошелька"], usdt: ["USDT TRC20", "wallet", "Адрес TRC20 (начинается с T)"] };
 const NFT_RE = /^https:\/\/t\.me\/nft\/[A-Za-z0-9_]{2,64}-\d{1,12}$/;
@@ -34,6 +34,7 @@ const mask = v => (v.length > 10 ? v.slice(0, 4) + " •••• " + v.slice(-4
 
 const view = $("#view");
 let me = null, cur = localStorage.getItem("deal_currency") || "RUB", page = ["home"], stack = [], tok = 0, sh = null;
+let transientReviews = []; // In memory only; a page reload clears these previews.
 const A = {}, PG = {};
 
 // ------------------------------------------------------------ core helpers
@@ -60,6 +61,12 @@ DB.siteRv ||= [];
 DB.admins ||= {};
 let duid = +(DEV || lsGet("deal_preview_user_v2") || 1) || 1;
 const save = () => lsSet("deal_preview_v2", JSON.stringify(DB));
+for (const d of Object.values(DB.deals||{})) {
+  if (d.join_code) continue;
+  do { d.join_code=String(100000+Math.floor(Math.random()*900000)); }
+  while(Object.values(DB.deals).some(x=>x!==d&&x.join_code===d.join_code));
+}
+save();
 const now = () => Math.floor(Date.now() / 1000);
 const r8 = x => Math.round(x * 1e8) / 1e8;
 const num = v => { const x = Number(String(v).replace(",", ".")); return isFinite(x) && x > 0 && x <= 1e9 ? r8(x) : 0; };
@@ -77,7 +84,7 @@ const validReq = (k, v) => {
 };
 const allowedD = (d, u) => {
   const st = d.status;
-  if (st === "created" || st === "waiting_participant") return u === d.creator_id ? (st === "created" ? ["invite"] : []).concat("cancel") : ["join"];
+  if (st === "created" || st === "waiting_participant") return u === d.creator_id ? ["cancel"] : [];
   if (st === "waiting_payment") return u === d.buyer_id ? ["pay", "cancel"] : u === d.seller_id ? ["cancel"] : [];
   if (st === "paid") return u === d.buyer_id ? ["confirm"] : u === d.seller_id ? ["refund"] : [];
   return [];
@@ -85,9 +92,8 @@ const allowedD = (d, u) => {
 const viewD = (d, u) => ({
   events: d.events || [{status:"created",created:d.created}], updated:d.updated || d.created, id: d.id, status: d.status, amount: String(d.amount), currency: d.currency, description: d.description, nft: d.nft, created: d.created,
   title: d.description.slice(0, 40) || `NFT-подарки (${d.nft.length})`, seller: pubu(d.seller_id), buyer: pubu(d.buyer_id),
-  actions: allowedD(d, u), is_creator: u === d.creator_id,
-  can_review: d.status === "completed" && (u === d.seller_id || u === d.buyer_id) && !DB.rv.some(r => r.deal_id === d.id && r.author_id === u),
-  link: location.href.split(/[?#]/)[0] + "?deal=" + d.id,
+  actions: allowedD(d, u), is_creator: u === d.creator_id, join_code:d.join_code,
+  can_review: d.status === "completed" && (u === d.seller_id || u === d.buyer_id),
 });
 async function demo(path, o = {}) { const r = demoRoute(path, o); save(); return r; }
 function demoRoute(path, o) {
@@ -98,11 +104,11 @@ function demoRoute(path, o) {
   const R = s[0];
   if (R === "me") {
     const bl = {}; CUR.forEach(c => (bl[c] = String(bal(u, c))));
-    const done = mine().filter(d => d.status === "completed"), to = {}, rt = DB.rv.filter(r => r.target_id === u);
+    const done = mine().filter(d => d.status === "completed"), to = {};
     done.forEach(d => (to[d.currency] = String(r8((+to[d.currency] || 0) + d.amount))));
     return {
-      user: { id: u, username: usr(u).username, name: usr(u).name, photo: null }, is_admin: !!DB.admins[u], is_worker: false, balances: bl, support: CFG.support || "", demo: true, payment_mode:"sandbox", auth_verified:false,
-      stats: { completed: done.length, active: mine().filter(d => !FINAL.includes(d.status)).length, rating: rt.length ? Math.round(rt.reduce((a, r) => a + r.rating, 0) / rt.length * 10) / 10 : null, reviews: rt.length, turnover: to },
+      user: { id: u, username: usr(u).username, name: usr(u).name, photo: null }, is_admin: !!DB.admins[u], is_worker: false, balances: bl, my_review:null, support: CFG.support || "", demo: true, payment_mode:"sandbox", auth_verified:false,
+      stats: { completed: done.length, active: mine().filter(d => !FINAL.includes(d.status)).length, rating: null, reviews: 0, turnover: to },
     };
   }
   if (R === "sandbox" && s[1] === "fund") {
@@ -112,15 +118,10 @@ function demoRoute(path, o) {
   if (R === "live") return {source:"preview",revision:DB.revision||0,server_time:now(),items:mine().filter(d=>d.status==="completed").flatMap(d=>d.nft.map(url=>{
     const [slug,number]=url.split("/").pop().split("-");return {deal_id:d.id,title:slug.replace(/([a-z])([A-Z])/g,"$1 $2"),number,url,amount:String(d.amount),currency:d.currency,completed:d.updated||d.created};
   }))};
-  if (R === "home") return { deals: mine().slice(0, 5).map(d => viewD(d, u)), reviews: [...DB.rv.map(r=>({...r,kind:"deal"})),...DB.siteRv.map(r=>({...r,kind:"site",created:r.updated}))].sort((a,b)=>b.created-a.created).slice(0,15).map(r => ({ rating: r.rating, text: r.text, created: r.created, kind:r.kind, name: "@" + usr(r.author_id).username })) };
+  if (R === "home") return { deals: mine().slice(0, 5).map(d => viewD(d, u)), reviews: [] };
   if (R === "reviews" && s[1] === "mine") {
-    if (m === "GET") return DB.siteRv.find(r=>r.author_id===u) || null;
-    if (!Number.isInteger(b.rating) || b.rating < 1 || b.rating > 5) throw new Error("Поставьте оценку от 1 до 5");
-    const text=String(b.text||"").trim().slice(0,300); if(!text) throw new Error("Напишите отзыв");
-    const old=DB.siteRv.find(r=>r.author_id===u);
-    if(old) Object.assign(old,{rating:b.rating,text,updated:now()});
-    else DB.siteRv.push({author_id:u,rating:b.rating,text,created:now(),updated:now()});
-    return {ok:true};
+    if (m === "GET") return null;
+    throw new Error("Постоянный отзыв можно оставить в ворк-панели");
   }
   if (R === "deals") {
     if (s.length === 1 && m === "GET") { const f = q.get("filter"); return mine().filter(d => f === "active" ? !FINAL.includes(d.status) : f === "done" ? d.status === "completed" : true).map(d => viewD(d, u)); }
@@ -132,24 +133,31 @@ function demoRoute(path, o) {
       if (!CUR.includes(b.currency)) throw new Error("Выберите валюту");
       if (desc.length < 3 && !nft.length) throw new Error("Опишите товар или добавьте NFT-ссылки");
       const id = Array.from(crypto.getRandomValues(new Uint8Array(12)), x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
-      const d = (DB.deals[id] = { id, creator_id: u, seller_id: b.role === "seller" ? u : null, buyer_id: b.role === "buyer" ? u : null, amount: amt, currency: b.currency, description: desc, nft, status: "created", created: now(), events:[{status:"created",created:now()}] });
+      let join_code; do { join_code=String(100000+Math.floor(Math.random()*900000)); } while(Object.values(DB.deals).some(x=>x.join_code===join_code));
+      const d = (DB.deals[id] = { id, join_code, creator_id: u, seller_id: b.role === "seller" ? u : null, buyer_id: b.role === "buyer" ? u : null, amount: amt, currency: b.currency, description: desc, nft, status: "waiting_participant", created: now(), events:[{status:"waiting_participant",created:now()}] });
       return viewD(d, u);
     }
+    if (s[1] === "join" && m === "POST") {
+      const code=String(b.code||""); if(!/^\d{6}$/.test(code)) throw new Error("Введите шестизначный код");
+      const d=Object.values(DB.deals).find(x=>x.join_code===code&&["created","waiting_participant"].includes(x.status)&&x.creator_id!==u);
+      if(!d) throw new Error("Код не найден или сделка уже недоступна");
+      d[d.seller_id===d.creator_id?"buyer_id":"seller_id"]=u; d.status="waiting_payment"; d.updated=now(); (d.events||=[]).push({status:d.status,created:now()});
+      return viewD(d,u);
+    }
     const d = dealOf(s[1]);
-    if (s.length === 2) return viewD(d, u);
+    if (s.length === 2) {
+      if(u!==d.seller_id&&u!==d.buyer_id) throw new Error("Эта сделка доступна только её участникам");
+      return viewD(d, u);
+    }
     const a = s[2];
     if (a === "review") {
       const r = b.rating;
       if (d.status !== "completed" || (u !== d.seller_id && u !== d.buyer_id)) throw new Error("Отзыв недоступен");
       if (!Number.isInteger(r) || r < 1 || r > 5) throw new Error("Поставьте оценку от 1 до 5");
-      if (DB.rv.some(x => x.deal_id === d.id && x.author_id === u)) throw new Error("Вы уже оставили отзыв");
-      DB.rv.push({ deal_id: d.id, author_id: u, target_id: u === d.seller_id ? d.buyer_id : d.seller_id, rating: r, text: String(b.text || "").trim().slice(0, 300), created: now() });
-      return { ok: true };
+      return {ok:true,review:{deal_id:d.id,author_id:u,rating:r,text:String(b.text||"").trim().slice(0,300),created:now(),kind:"deal_preview",name:"@"+usr(u).username}};
     }
     if (!allowedD(d, u).includes(a)) throw new Error("Действие сейчас недоступно");
-    if (a === "invite") d.status = "waiting_participant";
-    else if (a === "join") { d[d.seller_id === d.creator_id ? "buyer_id" : "seller_id"] = u; d.status = "waiting_payment"; }
-    else if (a === "pay") { mv(u, d.currency, -d.amount); tlog(u, "deal_pay", d.currency, d.amount, "done", d.id); d.status = "paid"; }
+    if (a === "pay") { mv(u, d.currency, -d.amount); tlog(u, "deal_pay", d.currency, d.amount, "done", d.id); d.status = "paid"; }
     else if (a === "confirm") { mv(d.seller_id, d.currency, d.amount); tlog(d.seller_id, "deal_release", d.currency, d.amount, "done", d.id); d.status = "completed"; }
     else if (a === "refund") { mv(d.buyer_id, d.currency, d.amount); tlog(d.buyer_id, "deal_refund", d.currency, d.amount, "done", d.id); d.status = "cancelled"; }
     else d.status = "cancelled";
@@ -328,7 +336,6 @@ A.close = closeSheet;
 A.seg = (_, el) => { el.parentElement.querySelectorAll(".on").forEach(x => x.classList.remove("on")); el.classList.add("on"); };
 A.copy = v => copyText(v);
 A.ext = u => openTg(u);
-A.share = l => !/^https:\/\/t\.me\//.test(l) ? copyText(l) : openTg(`https://t.me/share/url?url=${encodeURIComponent(l)}&text=${encodeURIComponent("Присоединяйтесь к сделке")}`);
 A.cur = c => {
   cur = c; lsSet("deal_currency", c); document.querySelectorAll("#curs .chip").forEach(x => x.classList.toggle("on", x.dataset.arg === c));
   $("#balv").textContent = fmBalance(me.balances[c], c);
@@ -341,74 +348,13 @@ A.support = () => me.support ? openTg("https://t.me/" + me.support) : toast("К�
 const dealCard = d => {
   const [l, c] = ST[d.status];
   return `<div class="card" data-act="deal" data-arg="${d.id}"><div class="row"><b>${esc(d.title)}</b><span class="bd ${c}">${l}</span></div>
-  <div class="row mut" style="margin-top:6px"><span>#${d.id}</span><b style="color:var(--ink)">${fm(d.amount, d.currency)}</b></div></div>`;
+  <div class="row mut" style="margin-top:6px"><span>Код ${esc(d.join_code||"—")}</span><b style="color:var(--ink)">${fm(d.amount, d.currency)}</b></div></div>`;
 };
 const reviewCard = r => `<div class="card"><div class="row"><div class="row" style="justify-content:flex-start"><div class="av">${esc((r.name.replace("@", "")[0] || "U").toUpperCase())}</div>
-  <div><b>${esc(r.name)}</b>${r.kind === "worker_test" ? '<small class="mut">Демонстрационный, без сделки</small>' : ""}</div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p>${esc(r.text)}</p>` : ""}</div>`;
-// Transcribed from the screenshots supplied by the project owner; not app transaction records.
-const SCREENSHOT_REVIEWS = [
-  ["@Алексей", 5, "Нормально"], ["@buyer_pro", 5, "Всё четко,без скама"],
-  ["@thevlastov", 5, "Красава не обманул"], ["@pavel_msk", 5, "Уже третья сделка, всё гладко"],
-  ["@bobofonw", 3, "советую"], ["@VajnixyXD", 5, "поверил на слово, не наебал спасибо"],
-  ["@воздух я", 5, "имба бляя"], ["@gartechikq", 4, "Норм но доверия не много даже после использования"],
-  ["@bododods", 5, "Лайк, не кинули"], ["@awangardiks", 5, "Сервис пушка"],
-  ["@FunPayHold", 5, "Ну вроде не кинули, деньги заплатили"],
-  ["@cryptowertty", 5, "нормально"], ["@tupoy_genniy", 5, "заебок"],
-  ["@buyer_pro", 5, "не наеб"], ["@buyer_pro", 5, "не наеб"],
-  ["@buyer_pro", 5, "афигеннг спасибо продал нфт"], ["@buyer_pro", 5, "кайф"],
-  ["@stepan_msc", 5, "Лучший сервис для сделок с подарками"],
-  ["@kate_moon", 5, "Комиссия маленькая, всё прозрачно"], ["@buyer_pro", 5, "топчик"],
-  ["@danyasssjer", 5, "Быстро и за норм прайс+реп"],
-  ["@lovemybaby", 5, "Сделка прошла отлично, рекомендую"],
-  ["@kirill_tg", 5, "Гарант всё чётко проверил, спасибо!"],
-  ["@sasha_nft", 5, "Скинул подарок, деньги пришли почти сразу"],
-  ["@egorka_spb", 5, "Сделка прошла отлично, рекомендую"],
-  ["@egorka_spb", 4, "нормально"], ["@maxpower", 4, "Уже третья сделка, всё гладко"],
-  ["@sweetdreamz", 5, "Оперативно, никаких задержек"],
-  ["@sweetdreamz", 5, "Отличная поддержка, помогли разобраться"],
-  ["@tonlover", 5, "Комиссия маленькая, всё прозрачно"],
-  ["@miloradik", 5, "Комиссия маленькая, всё прозрачно"],
-  ["@roman_x", 5, "Комиссия маленькая, всё прозрачно"],
-  ["@egorka_spb", 5, "Скинул подарок, деньги пришли почти сразу"],
-  ["@kate_moon", 5, "Гарант всё чётко проверил, спасибо!"],
-  ["@vano228", 5, "Красавцы, всё по-честному"],
-  ["@maxpower", 4, "Просто и понятно, разобрался за минуту"],
-  ["@kirill_tg", 5, "Ахуенный ботик, быстро провели сделку, советую всем"],
-  ["@roman_x", 5, "Отличная поддержка, помогли разобраться"],
-  ["@anyuta", 5, "Продал подарок за 5 минут, супер сервис"],
-  ["@sasha_nft", 5, "Отличная поддержка, помогли разобраться"],
-  ["@denchik", 5, "Комиссия маленькая, всё прозрачно"],
-  ["@kirill_tg", 5, "Скинул подарок, деньги пришли почти сразу"],
-  ["@miloradik", 5, "Лучший сервис для сделок с подарками"],
-  ["@аноним", 5, "Продал подарок за 5 минут, супер сервис"],
-  ["@dashka99", 5, "Реально безопасно, гарант не подведёт"],
-  ["@miloradik", 4, "Сработало, но не сразу понял как выводить"],
-  ["@artem_pro", 5, "Красавцы, всё по-честному"],
-  ["@zaycev_go", 5, "Просто и понятно, разобрался за минуту"],
-  ["@artem_pro", 5, "Гарант всё чётко проверил, спасибо!"],
-  ["@nikita_spb", 5, "Гарант на связи 24/7, реально помогают"],
-  ["@sasha_nft", 5, "Сделка прошла отлично, рекомендую"],
-  ["@аноним", 5, "Просто и понятно, разобрался за минуту"],
-  ["@egorka_spb", 5, "Гарант всё чётко проверил, спасибо!"],
-  ["@zaycev_go", 4, "Всё ок, но хотелось бы больше валют"],
-  ["@аноним", 5, "Быстро и без проблем, деньги пришли сразу"],
-  ["@giftmaster", 5, "Отличная поддержка, помогли разобраться"],
-  ["@kate_moon", 5, "Уже не первый раз пользуюсь, всё стабильно"],
-  ["@kate_moon", 5, "Просто и понятно, разобрался за минуту"],
-  ["@bogdan_007", 5, "Скинул подарок, деньги пришли почти сразу"],
-  ["@dashka99", 4, "Всё ок, но хотелось бы больше валют"],
-  ["@roman_x", 5, "Быстро и без проблем, деньги пришли сразу"],
-  ["@miloradik", 5, "Оперативно, никаких задержек"],
-  ["@lovemybaby", 4, "Всё как и обещали, доволен"],
-  ["@lera_v", 5, "Всё как и обещали, доволен"],
-  ["@artem_pro", 5, "Скинул подарок, деньги пришли почти сразу"],
-  ["@dashka99", 4, "Нормально, но пришлось подождать пару минут"],
-  ["@quickbuyer", 5, "Понятный интерфейс и удобные статусы сделки."],
-  ["@neontrade", 5, "Очень удобный сервис, провожу сделки не первый раз, проблем не было."]
-].map(([name, rating, text]) => ({ name, rating, text, source: "screenshot" }));
-
+  <div><b>${esc(r.name)}</b>${r.kind?.endsWith("_preview") ? '<small class="mut">До обновления страницы</small>' : ""}</div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p>${esc(r.text)}</p>` : ""}</div>`;
 PG.home = async () => {
   const [h] = await Promise.all([api("/home"),refreshMe()]);
+  const reviews=[...transientReviews.filter(r=>r.author_id===me.user.id).reverse(),...h.reviews];
   return `<div class="hero"><span class="tag">Сделки в Telegram</span><h2>P2P-сделки<br>с понятным статусом</h2><p>Создайте сделку, пригласите участника и следите за каждым этапом.</p><span class="hero-g" aria-hidden="true">G</span>
   <button class="btn w sm" data-act="new">Создать сделку ${ico("arrow")}</button></div>
   <h3>Быстрые действия</h3><div class="qa"><button data-act="new"><i>${ico("plus")}</i>Новая сделка</button><button data-act="joinsheet"><i>${ico("box")}</i>Вступить в<br>сделку</button><button data-act="tab" data-arg="deals"><i>${ico("gem")}</i>Мои сделки</button></div>
@@ -416,7 +362,7 @@ PG.home = async () => {
   <div class="chips" id="curs">${CUR.map(c=>`<button class="chip ${c===cur?"on":""}" data-act="cur" data-arg="${c}">${c}</button>`).join("")}</div></div>
   <h3>Последние сделки<button class="text-button" data-act="tab" data-arg="deals">Все</button></h3><div id="recent-deals">${h.deals.length?`<div class="list">${h.deals.map(dealCard).join("")}</div>`:empty(ico("bag")+"<p>У вас пока нет сделок</p>")}</div>
   <h3>Последние успешные сделки<span class="live" id="live-state">● LIVE</span></h3><div id="live-feed">${catalogCards()}</div>
-  <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${[...h.reviews, ...SCREENSHOT_REVIEWS].map(reviewCard).join("")}</div>`;
+  <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${reviews.length?reviews.map(reviewCard).join(""):empty("Отзывов пока нет")}</div>`;
 };
 
 PG.deals = async (f = "all") => {
@@ -453,18 +399,18 @@ PG.deal = async id => {
   const i = d.status === "cancelled" ? -1 : steps.indexOf(d.status);
   const [sl, sc] = ST[d.status];
   const inv = d.is_creator && (d.status === "created" || d.status === "waiting_participant");
-  return `${bk}<div class="card"><div class="row"><span class="mut">Сделка #${d.id}</span><span class="bd ${sc}">${sl}</span></div>
+  return `${bk}<div class="card"><div class="row"><span class="mut">Сделка · код ${esc(d.join_code)}</span><span class="bd ${sc}">${sl}</span></div>
   <div class="big">${fm(d.amount, d.currency)}</div><div class="tl">${steps.map((_, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>
   ${d.description ? `<p>${esc(d.description)}</p>` : ""}
   ${d.nft.length ? `<div class="mut">NFT-подарки</div>${d.nft.map(u => `<div class="link" data-act="ext" data-arg="${esc(u)}">${ico("gift")}${esc(u.replace("https://t.me/nft/", ""))}</div>`).join("")}` : ""}</div>
   <div class="card"><div class="kv"><span class="mut">Продавец</span><b>${esc(d.seller ? d.seller.name : "Ожидается")}</b></div>
   <div class="kv"><span class="mut">Покупатель</span><b>${esc(d.buyer ? d.buyer.name : "Ожидается")}</b></div>
   <div class="kv"><span class="mut">Создана</span><span>${dt(d.created)}</span></div></div>
-  ${inv && d.link ? `<div class="card"><b>Ссылка для второго участника</b><div class="link" data-act="copy" data-arg="${esc(d.link)}">${ico("copy")}${esc(d.link)}</div>
-  <button class="btn s" data-act="copy" data-arg="${esc(d.link)}">${ico("copy")}Копировать ссылку</button><button class="btn" data-act="share" data-arg="${esc(d.link)}">${ico("send")}Отправить в Telegram</button></div>` : ""}
+  ${inv ? `<div class="card"><b>Код для второго участника</b><div class="big">${esc(d.join_code)}</div>
+  <button class="btn s" data-act="copy" data-arg="${esc(d.join_code)}">${ico("copy")}Копировать код</button></div>` : ""}
   ${d.status==="waiting_payment" && d.actions.includes("pay")?`<button class="btn s" data-act="topup">${ico("plus")}Пополнить баланс</button>`:""}
-  ${d.actions.filter(a=>a!=="invite").map((a, k) => `<button class="btn ${a === "cancel" || a === "refund" ? "d" : k ? "s" : ""}" data-act="dact" data-arg="${a}">${LBL[a]}</button>`).join("")}
-  ${d.can_review ? `<button class="btn s" data-act="rvdeal">Оставить отзыв</button>` : ""}
+  ${d.actions.map((a, k) => `<button class="btn ${a === "cancel" || a === "refund" ? "d" : k ? "s" : ""}" data-act="dact" data-arg="${a}">${LBL[a]}</button>`).join("")}
+  ${d.can_review && !transientReviews.some(r=>r.author_id===me.user.id&&r.deal_id===d.id) ? `<button class="btn s" data-act="rvdeal">Оставить отзыв до обновления страницы</button>` : ""}
   <h3>История сделки</h3><div class="card events">${(d.events||[]).map(e=>`<div class="event"><span class="event-dot"></span><div><b>${ST[e.status]?.[0]||esc(e.status)}</b><small>${dt(e.created)}</small></div></div>`).join("")}</div><p class="hint">Передачу NFT участники подтверждают самостоятельно.</p>`;
 };
 
@@ -474,17 +420,17 @@ A.dact = async (act, b) => {
   if (q && !(await ask(q))) return;
   await busy(b, async () => {
     await api(`/deals/${id}/${act}`, { method: "POST" });
-    haptic("success"); toast(act === "invite" ? "Ссылка готова — отправьте её участнику" : "Готово"); await render();
+    haptic("success"); toast("Готово"); await render();
   });
 };
 
-A.joinsheet = () => sheet(`<h2>Вступить в сделку</h2><p class="mut">Вставьте ссылку или ID сделки</p>
-  <input id="jid" placeholder="ID или ссылка" autocomplete="off"><button class="btn" data-act="joingo">Открыть сделку</button>`);
-A.joingo = () => {
-  const m = /([A-Fa-f0-9]{24})/.exec($("#jid").value);
-  if (!m) throw new Error("ID сделки не найден");
-  closeSheet(); go("deal", m[1].toUpperCase());
-};
+A.joinsheet = () => sheet(`<h2>Вступить в сделку</h2><p class="mut">Введите шестизначный код от создателя сделки</p>
+  <input id="jid" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="123456" autocomplete="off"><button class="btn" data-act="joingo">Вступить</button>`);
+A.joingo = (_, b) => busy(b, async () => {
+  const code=$("#jid").value.trim(); if(!/^\d{6}$/.test(code)) throw new Error("Введите шестизначный код");
+  const d=await api("/deals/join",{method:"POST",body:{code}});
+  closeSheet(); go("deal",d.id);
+});
 
 // reviews
 function reviewSheet(ids) {
@@ -496,17 +442,22 @@ function reviewSheet(ids) {
 }
 A.rvdeal = () => reviewSheet([page[1]]);
 A.rvhome = async () => {
-  const old=await api("/reviews/mine");
-  sheet(`<h2>Мой отзыв</h2><label>Оценка</label><div class="grid3" id="rate" style="grid-template-columns:repeat(5,1fr)">${[1,2,3,4,5].map(n=>`<button class="opt ${n===(old?.rating||5)?"on":""}" data-act="seg" data-arg="${n}">${n}★</button>`).join("")}</div>
-    <label>Комментарий</label><textarea id="rvt" maxlength="300" placeholder="Ваш отзыв">${esc(old?.text||"")}</textarea><button class="btn" data-act="siteresend">Сохранить отзыв</button>`);
+  const old=transientReviews.findLast(r=>r.author_id===me.user.id&&r.kind==="site_preview");
+  sheet(`<h2>Мой отзыв</h2><p class="mut">Он будет виден до обновления страницы. Постоянный отзыв сохраняется в ворк-панели.</p>
+    <label>Оценка</label><div class="grid3" id="rate" style="grid-template-columns:repeat(5,1fr)">${[1,2,3,4,5].map(n=>`<button class="opt ${n===(old?.rating||5)?"on":""}" data-act="seg" data-arg="${n}">${n}★</button>`).join("")}</div>
+    <label>Комментарий</label><textarea id="rvt" maxlength="300" placeholder="Ваш отзыв">${esc(old?.text||"")}</textarea><button class="btn" data-act="siteresend">Показать отзыв</button>`);
 };
 A.siteresend = (_, b) => busy(b, async () => {
-  await api("/reviews/mine",{method:"POST",body:{rating:+$("#rate .on").dataset.arg,text:$("#rvt").value}});
-  closeSheet(); toast("Отзыв сохранён"); render();
+  const text=$("#rvt").value.trim().slice(0,300);
+  if(!text) throw new Error("Напишите отзыв");
+  transientReviews=transientReviews.filter(r=>!(r.author_id===me.user.id&&r.kind==="site_preview"));
+  transientReviews.push({author_id:me.user.id,rating:+$("#rate .on").dataset.arg,text,created:now(),kind:"site_preview",name:me.user.username?"@"+me.user.username:me.user.name||"Пользователь"});
+  closeSheet(); toast("Отзыв виден до обновления страницы"); render();
 });
 A.rvsend = (_, b) => busy(b, async () => {
-  await api(`/deals/${$("#rvd .on").dataset.arg}/review`, { method: "POST", body: { rating: +$("#rate .on").dataset.arg, text: $("#rvt").value } });
-  closeSheet(); haptic("success"); toast("Спасибо за отзыв"); render();
+  const r=await api(`/deals/${$("#rvd .on").dataset.arg}/review`, { method: "POST", body: { rating: +$("#rate .on").dataset.arg, text: $("#rvt").value } });
+  transientReviews.push({...r.review,author_id:me.user.id});
+  closeSheet(); haptic("success"); toast("Отзыв виден до обновления страницы"); render();
 });
 
 // requisites & balance
@@ -547,7 +498,7 @@ A.wsend = (_, b) => busy(b, async () => {
 });
 PG.ops = async () => {
   const t = await api("/txs");
-  const plus = new Set(["deposit", "deal_release", "deal_refund", "admin_credit", "sandbox_credit"]);
+  const plus = new Set(["deposit", "deal_release", "deal_refund", "admin_credit", "sandbox_credit", "worker_credit"]);
   return `${bk}<h1>История операций</h1>${t.length ? t.map(x => {
     const [sl, sc] = TXS[x.status] || ["", "gray"];
     return `<div class="card"><div class="row"><b>${TX[x.type] || x.type}${x.ref && x.type.startsWith("deal") ? " #" + esc(x.ref) : ""}</b><b style="color:${plus.has(x.type) ? "var(--g2)" : "var(--ink)"}">${plus.has(x.type) ? "+" : "−"}${fm(x.amount, x.currency)}</b></div>
@@ -559,15 +510,18 @@ PG.ops = async () => {
 PG.profile = async () => {
   await refreshMe();
   const u = me.user, s = me.stats;
+  const latest=transientReviews.filter(r=>r.author_id===u.id).at(-1);
+  const own=latest|| (me.my_review ? {rating:me.my_review.rating,text:me.my_review.text,name:u.username?"@"+u.username:u.name||"Пользователь",kind:"work"} : null);
   const name = u.username ? "@" + u.username : u.name || "Пользователь";
   const to = Object.entries(s.turnover).map(([c, v]) => fm(v, c)).join(" · ") || "0";
   const mi = (a, arg, ic, t, sm = "") => `<button class="mi" data-act="${a}" data-arg="${arg}"><i>${ico(ic)}</i><div>${t}${sm ? `<small>${sm}</small>` : ""}</div>${ico("chev")}</button>`;
   return `<div class="card profile-card"><div class="av lg">${u.photo?`<img src="${esc(u.photo)}" alt="Аватар профиля">`:esc((u.name||name).replace("@","")[0].toUpperCase())}</div><div><h1>${esc(u.name||name)}</h1><span class="bd green">${me.auth_verified ? "Вход через Telegram" : "Тестовый профиль"}</span><div class="mut">${esc(u.username?"@"+u.username:"")}</div><small class="mut">ID: ${u.id}</small></div></div>
   <div class="stats"><div class="stat">Завершено сделок<b>${s.completed}</b></div><div class="stat">Активных сейчас<b>${s.active}</b></div>
-  <div class="stat">Рейтинг<b>${s.rating ? s.rating + " ★" : "—"}</b></div><div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div></div>
+  <div class="stat">Моя оценка<b>${own ? own.rating + " ★" : "—"}</b></div><div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div></div>
+  <h3>Последний отзыв</h3>${own?reviewCard(own):empty("Ваших отзывов пока нет")}
   ${dm()}<div class="group-label">УПРАВЛЕНИЕ</div>
   ${me.is_admin ? mi("go", "admin", "shield", "Админ-панель", "Управление платформой") : ""}
-  ${me.is_worker ? mi("go", "worker", "wallet", "Ворк-панель", "Тестовый баланс и отзывы") : ""}
+  ${me.is_worker ? mi("go", "worker", "wallet", "Ворк-панель", "Баланс и постоянный отзыв") : ""}
   ${mi("rvhome", "", "help", "Мой отзыв")}
   ${mi("tab", "reqs", "gem", "Мои реквизиты")}${mi("wdsheet", "", "out", "Вывод средств")}${mi("go", "deals", "bag", "История сделок")}
   ${mi("go", "ops", "list", "История операций")}<div class="group-label">СЕРВИС И ПОМОЩЬ</div>${mi("go", "support", "headset", "Поддержка")}${mi("language", "", "help", "Язык интерфейса", "Русский")}${mi("closetg", "", "out", "Закрыть мини-приложение")}`;
@@ -579,25 +533,24 @@ PG.worker = async () => {
   const w = await api("/worker");
   const balances = Object.entries(w.balances).map(([currency, value]) => fmBalance(value, currency)).join(" · ") || "0 RUB";
   const enabled = w.payment_mode === "sandbox";
-  return `${bk}<h1>Ворк-панель</h1><div class="card"><b>Ваш баланс</b><p>${esc(balances)}</p><div class="hint">Только тестовые средства. Реальные платежи не подключены.</div></div>
+  return `${bk}<h1>Ворк-панель</h1><div class="card"><b>Ваш баланс в приложении</b><p>${esc(balances)}</p><div class="hint">Показывает запись в базе. Денежный провайдер не подключён.</div></div>
   ${enabled ? `<div class="card"><h3>Начислить себе баланс</h3><label>Валюта</label>${chipsCur("wcur")}
-    <label>Сумма</label><input id="wamount" inputmode="decimal" placeholder="Например, 100" autocomplete="off"><button class="btn" data-act="wcredit">Начислить</button></div>
-    <div class="card"><h3>Тестовые отзывы</h3><p class="mut">Отзывы появятся в ленте с пометкой «Тестовый отзыв» и не изменят рейтинг участников сделок.</p>
-    <label>Оценка</label><div class="grid3" id="wrating" style="grid-template-columns:repeat(5,1fr)">${[1,2,3,4,5].map(n=>`<button class="opt ${n===5?"on":""}" data-act="seg" data-arg="${n}">${n}★</button>`).join("")}</div>
-    <label>Количество (1–10)</label><input id="wcount" type="number" min="1" max="10" value="1"><label>Текст</label><textarea id="wtext" maxlength="300" placeholder="Текст тестового отзыва"></textarea>
-    <button class="btn" data-act="wreviews">Добавить тестовые отзывы</button></div>` : '<div class="card"><p>Тестовый режим отключён.</p></div>'}
-  <h3>Ваши тестовые отзывы</h3>${w.reviews.length ? w.reviews.map(r=>`<div class="card"><div class="row"><b>Тестовый отзыв · ${r.rating}★</b><button class="btn sm d" data-act="wdelete" data-arg="${r.id}">Удалить</button></div><p>${esc(r.text)}</p></div>`).join("") : empty("Пока нет тестовых отзывов")}`;
+    <label>Сумма</label><input id="wamount" inputmode="decimal" placeholder="Например, 100" autocomplete="off"><button class="btn" data-act="wcredit">Начислить</button><p class="mut">Начисление доступно только в режиме sandbox.</p></div>` : '<div class="card"><p>Начисления отключены.</p></div>'}
+  <div class="card"><h3>Ваш отзыв</h3><p class="mut">Отзыв публикуется от вашего Telegram-профиля и сохраняется после обновления страницы. Можно изменить или удалить его.</p>
+    <label>Оценка</label><div class="grid3" id="wrating" style="grid-template-columns:repeat(5,1fr)">${[1,2,3,4,5].map(n=>`<button class="opt ${n===(w.review?.rating||5)?"on":""}" data-act="seg" data-arg="${n}">${n}★</button>`).join("")}</div>
+    <label>Текст</label><textarea id="wtext" maxlength="300" placeholder="Ваш отзыв">${esc(w.review?.text||"")}</textarea>
+    <button class="btn" data-act="wreviews">Сохранить отзыв</button>${w.review?'<button class="btn d" data-act="wdelete">Удалить отзыв</button>':""}</div>`;
 };
 A.wcredit = (_, b) => busy(b, async () => {
   await api("/worker/credit", {method:"POST", body:{currency:$("#wcur .on").dataset.arg, amount:$("#wamount").value}});
-  await refreshMe(); toast("Тестовый баланс начислен"); render();
+  await refreshMe(); toast("Баланс обновлён"); render();
 });
 A.wreviews = (_, b) => busy(b, async () => {
-  await api("/worker/reviews", {method:"POST", body:{rating:+$("#wrating .on").dataset.arg, count:+$("#wcount").value, text:$("#wtext").value}});
-  toast("Тестовые отзывы добавлены"); render();
+  await api("/worker/reviews", {method:"POST", body:{rating:+$("#wrating .on").dataset.arg, text:$("#wtext").value}});
+  await refreshMe(); toast("Отзыв сохранён"); render();
 });
-A.wdelete = (id, b) => busy(b, async () => {
-  await api(`/worker/reviews/${id}`, {method:"DELETE"}); toast("Тестовый отзыв удалён"); render();
+A.wdelete = (_, b) => busy(b, async () => {
+  await api("/worker/reviews", {method:"DELETE"}); await refreshMe(); toast("Отзыв удалён"); render();
 });
 
 // admin / work panel
@@ -772,10 +725,7 @@ if(document.modelContext?.registerTool){
   // Preview mode is explicit; an API outage NEVER switches to simulated money.
   DEMO = CFG.preview === true;
   try { await refreshMe(); } catch (e) { view.innerHTML = empty(esc(e.message)); return; }
-  const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || P.get("deal") || "";
-  const m = /^(?:deal_)?([A-Fa-f0-9]{24})$/.exec(sp);
-  if (m) page = ["deal", m[1].toUpperCase()];
-  else if(P.get("admin")==="1" && me.is_admin) page=["admin","stats"];
+  if(P.get("admin")==="1" && me.is_admin) page=["admin","stats"];
   else if(P.get("worker")==="1" && me.is_worker) page=["worker"];
   await render();
   await syncLive();setInterval(syncLive,3000);setInterval(rotateFeed,26000);

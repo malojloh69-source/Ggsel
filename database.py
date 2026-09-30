@@ -1,4 +1,5 @@
 import sqlite3
+import secrets
 import time
 from contextlib import contextmanager
 
@@ -14,7 +15,9 @@ CREATE TABLE IF NOT EXISTS workers(user_id INTEGER PRIMARY KEY, granted_at INTEG
 CREATE TABLE IF NOT EXISTS balances(user_id INTEGER, currency TEXT,
   amount INTEGER NOT NULL DEFAULT 0 CHECK(amount>=0), PRIMARY KEY(user_id,currency));
 CREATE TABLE IF NOT EXISTS deals(id TEXT PRIMARY KEY, creator_id INTEGER, seller_id INTEGER, buyer_id INTEGER,
-  amount INTEGER, currency TEXT, description TEXT, nft TEXT, status TEXT, created INTEGER, updated INTEGER);
+  amount INTEGER, currency TEXT, description TEXT, nft TEXT, status TEXT, created INTEGER, updated INTEGER,
+  join_code TEXT UNIQUE);
+CREATE TABLE IF NOT EXISTS join_attempts(user_id INTEGER PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS txs(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, type TEXT, currency TEXT,
   amount INTEGER, status TEXT, details TEXT, ref TEXT, created INTEGER);
 CREATE TABLE IF NOT EXISTS requisites(user_id INTEGER, kind TEXT, value TEXT, PRIMARY KEY(user_id,kind));
@@ -25,6 +28,9 @@ CREATE TABLE IF NOT EXISTS site_reviews(author_id INTEGER PRIMARY KEY, rating IN
 CREATE TABLE IF NOT EXISTS worker_reviews(id INTEGER PRIMARY KEY AUTOINCREMENT,
   worker_id INTEGER NOT NULL, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
   text TEXT NOT NULL, created INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS work_reviews(author_id INTEGER PRIMARY KEY,
+  rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), text TEXT NOT NULL,
+  created INTEGER NOT NULL, updated INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS ix_worker_reviews_worker ON worker_reviews(worker_id,id);
 CREATE TABLE IF NOT EXISTS promo_claims(user_id INTEGER NOT NULL, code TEXT NOT NULL, created INTEGER NOT NULL,
   PRIMARY KEY(user_id,code));
@@ -56,8 +62,28 @@ def init():
     c = conn()
     try:
         c.executescript(SCHEMA)
+        c.execute("BEGIN IMMEDIATE")
+        if not any(col[1] == "join_code" for col in c.execute("PRAGMA table_info(deals)")):
+            c.execute("ALTER TABLE deals ADD COLUMN join_code TEXT")
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_deals_join_code ON deals(join_code)")
+        for (did,) in c.execute("SELECT id FROM deals WHERE join_code IS NULL"):
+            c.execute("UPDATE deals SET join_code=? WHERE id=?", (new_join_code(c), did))
+        c.execute("COMMIT")
+    except BaseException:
+        if c.in_transaction:
+            c.execute("ROLLBACK")
+        raise
     finally:
         c.close()
+
+
+def new_join_code(c):
+    """Draw a unique six-digit code while holding a write transaction."""
+    for _ in range(100):
+        code = str(secrets.randbelow(900000) + 100000)
+        if not c.execute("SELECT 1 FROM deals WHERE join_code=?", (code,)).fetchone():
+            return code
+    raise RuntimeError("Не удалось создать код сделки")
 
 
 @contextmanager
