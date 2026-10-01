@@ -17,7 +17,7 @@ const ST = {
 const LBL = { pay: "Оплатить", confirm: "Подтвердить получение", refund: "Вернуть деньги покупателю", cancel: "Отменить сделку" };
 const TX = { deposit: "Пополнение", withdraw: "Вывод", deal_pay: "Оплата сделки", deal_release: "Выплата по сделке", deal_refund: "Возврат по сделке", sandbox_credit: "Пополнение баланса", admin_credit: "Начисление", worker_credit: "Начисление" };
 const TXS = { pending: ["На рассмотрении", "amber"], done: ["Выполнено", "green"], rejected: ["Отклонено", "red"] };
-const RK = { card: ["Банковская карта", "wallet", "Последние 4 цифры (без полного номера)"], ton: ["TON кошелёк", "gem", "Адрес TON-кошелька"], usdt: ["USDT TRC20", "wallet", "Адрес TRC20 (начинается с T)"] };
+const RK = { card: ["Банковская карта", "wallet", "Полный номер карты (12–19 цифр)"], ton: ["TON кошелёк", "gem", "Адрес TON-кошелька"], usdt: ["USDT TRC20", "wallet", "Адрес TRC20 (начинается с T)"] };
 const NFT_RE = /^https:\/\/t\.me\/nft\/[A-Za-z0-9_]{2,64}-\d{1,12}$/;
 const TABMAP = { home: "home", deals: "deals", deal: "deals", intro: "deals", new: "deals", reqs: "reqs", profile: "profile", ops: "profile", support: "profile", admin: "profile", worker: "profile" };
 
@@ -76,7 +76,7 @@ const usr = id => DB.users[id] || (DB.users[id] = { id, username: "demo" + id, n
 const pubu = id => id ? { id, name: "@" + usr(id).username } : null;
 const luhn = s => { let t = 0; [...s].reverse().forEach((ch, i) => { let n = +ch; if (i % 2) n = n > 4 ? n * 2 - 9 : n * 2; t += n; }); return t % 10 === 0; };
 const validReq = (k, v) => {
-  if (k === "card") { v = v.replace(/[ -]/g, ""); return /^\d{4}$/.test(v) ? v : null; }
+  if (k === "card") { v = v.replace(/[ -]/g, ""); if (!/^\d{12,19}$/.test(v)) return null; let sum = 0; for (let i = 0; i < v.length; i++) { let n = Number(v[v.length - 1 - i]); if (i % 2) n = n * 2 > 9 ? n * 2 - 9 : n * 2; sum += n; } return sum % 10 === 0 ? v : null; }
   if (k === "ton") return /^[A-Za-z0-9_-]{48}$/.test(v) ? v : null;
   if (k === "usdt") return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(v) ? v : null;
   return null;
