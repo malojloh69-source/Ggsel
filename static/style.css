@@ -63,6 +63,12 @@ h3 a, .text-button { color: var(--g2); font-size: 15px; font-weight: 650; white-
 .btn.sm { display: inline-flex; width: auto; min-height: 39px; margin: 0; padding: 8px 16px; font-size: 14px; box-shadow: none; }
 .hero .btn.sm { min-height: 47px; padding: 8px 21px; font-size: 16px; }
 .btn[disabled] { opacity: .65; pointer-events: none; }
+.deal-intro { padding: 26px 23px; border: 1px solid #f6d8d5; background: #fffafa; }
+.deal-intro-label { color: #ae3c39; font-size: 14px; font-weight: 700; }
+.deal-intro h1 { margin: 14px 0 22px; font-size: clamp(26px, 7vw, 34px); }
+.deal-intro p { margin: 17px 0; font-size: clamp(18px, 4.7vw, 21px); line-height: 1.5; }
+.deal-intro strong { color: #ae3c39; overflow-wrap: anywhere; }
+.deal-intro .intro-continue { min-height: 64px; margin-top: 30px; background: var(--red); box-shadow: 0 9px 18px rgba(214, 77, 70, .2); font-size: 18px; }
 .btn.load::after { content: ""; width: 18px; height: 18px; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sp .7s linear infinite; }
 @keyframes sp { to { transform: rotate(360deg); } }
 .qa { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
