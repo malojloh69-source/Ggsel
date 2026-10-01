@@ -579,7 +579,7 @@ PG.profile = async () => {
   const mi = (a, arg, ic, t, sm = "") => `<button class="mi" data-act="${a}" data-arg="${arg}"><i>${ico(ic)}</i><div>${t}${sm ? `<small>${sm}</small>` : ""}</div>${ico("chev")}</button>`;
   return `<div class="card profile-card"><div class="av lg">${u.photo?`<img src="${esc(u.photo)}" alt="Аватар профиля">`:esc((u.name||name).replace("@","")[0].toUpperCase())}</div><div><h1>${esc(u.name||name)}</h1><span class="bd green">${me.auth_verified ? "Вход через Telegram" : "Тестовый профиль"}</span><div class="mut">${esc(u.username?"@"+u.username:"")}</div><small class="mut">ID: ${u.id}</small></div></div>
   <div class="stats"><div class="stat">Сделок<b>${s.test_completed}</b></div><div class="stat">Активных сейчас<b>${s.active}</b></div>
-  <div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div><div class="stat">${testRating ? "Рейтинг" : "Рейтинг"}<b>${rating === null || rating === undefined ? "—" : `${Number(rating).toFixed(1)} ★`}</b></div>
+  <div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div><div class="stat">${testRating ? "Рейтинг (демо)" : "Рейтинг"}<b>${rating === null || rating === undefined ? "—" : `${Number(rating).toFixed(1)} ★`}</b></div>
   </div>
   ${dm()}<div class="group-label">УПРАВЛЕНИЕ</div>
   ${me.is_admin ? mi("go", "admin", "shield", "Админ-панель", "Управление платформой") : ""}
