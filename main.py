@@ -293,13 +293,17 @@ def me():
         "SELECT COUNT(*) n FROM deals WHERE status NOT IN ('completed','cancelled') AND (seller_id=? OR buyer_id=?)",
         (uid, uid),
     )["n"]
+    rating = db.row("SELECT AVG(rating) value, COUNT(*) n FROM reviews WHERE target_id=?", (uid,))
+    test_stats = db.row("SELECT completed_count,rating_tenths FROM worker_stats WHERE user_id=?", (uid,)) if g.is_worker and config.PAYMENT_MODE == "sandbox" else None
     return jsonify(
         user={"id": uid, "username": u["username"], "name": u["first_name"], "photo": u["photo"]},
         is_admin=g.is_admin, is_worker=g.is_worker, balances=bal,
         support=config.SUPPORT, demo=config.DEV_MODE, payment_mode=config.PAYMENT_MODE, auth_verified=not config.DEV_MODE,
         stats={
             "completed": sum(r["n"] for r in done), "active": active,
-            "rating": None, "reviews": 0,
+            "rating": round(rating["value"], 1) if rating["n"] else None, "reviews": rating["n"],
+            "test_completed": test_stats["completed_count"] if test_stats else None,
+            "test_rating": test_stats["rating_tenths"] / 10 if test_stats else None,
             "turnover": {r["currency"]: fmt(r["s"]) for r in done},
         },
     )
@@ -337,7 +341,32 @@ def worker_panel():
     balances = {r["currency"]: fmt(r["amount"]) for r in db.rows(
         "SELECT currency,amount FROM balances WHERE user_id=? AND amount>0", (uid,)
     )}
-    return jsonify(payment_mode=config.PAYMENT_MODE, balances=balances)
+    stats = db.row("SELECT completed_count,rating_tenths FROM worker_stats WHERE user_id=?", (uid,))
+    return jsonify(payment_mode=config.PAYMENT_MODE, balances=balances,
+                   test_stats={"completed": stats["completed_count"], "rating": stats["rating_tenths"] / 10} if stats else None)
+
+
+@app.post("/api/worker/stats")
+@auth(worker=True)
+def worker_stats():
+    if config.PAYMENT_MODE != "sandbox":
+        return err("Тестовые показатели отключены", 403)
+    data = request.get_json(silent=True) or {}
+    count = data.get("completed")
+    try:
+        value = Decimal(str(data.get("rating")))
+    except (InvalidOperation, ValueError):
+        return err("Рейтинг должен быть от 0 до 5 с одним знаком после запятой")
+    if type(count) is not int or not 0 <= count <= 1000000:
+        return err("Количество сделок должно быть целым числом от 0 до 1 000 000")
+    if not value.is_finite() or not 0 <= value <= 5 or value * 10 != (value * 10).to_integral_value():
+        return err("Рейтинг должен быть от 0 до 5 с одним знаком после запятой")
+    tenths = int(value * 10)
+    with db.tx() as c:
+        c.execute("INSERT INTO worker_stats(user_id,completed_count,rating_tenths) VALUES(?,?,?) "
+                  "ON CONFLICT(user_id) DO UPDATE SET completed_count=excluded.completed_count,rating_tenths=excluded.rating_tenths",
+                  (g.user["id"], count, tenths))
+    return jsonify(ok=True, test_stats={"completed": count, "rating": tenths / 10})
 
 
 @app.post("/api/worker/credit")

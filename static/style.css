@@ -169,7 +169,7 @@ label { display: flex; align-items: center; gap: 8px; margin: 17px 0 8px; color:
 #nav > button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 55px; padding: 6px 1px; border-radius: 21px; color: var(--mut); font-size: 11px; font-weight: 500; line-height: 1.12; white-space: nowrap; transition: background .16s, color .16s, transform .16s; }
 #nav > button.on { color: var(--g2); background: var(--gs); }
 #nav .ic { width: 22px; height: 22px; }
-#nav .fab { justify-content: center; width: 57px; height: 57px; min-height: 0; margin: -17px auto 0; padding: 0; border-radius: 50%; color: #fff; background: var(--g); box-shadow: 0 11px 22px rgba(29,196,91,.28); }
+#nav .fab { justify-content: center; width: 57px; height: 57px; min-height: 0; margin: 0 auto; padding: 0; border-radius: 50%; color: #fff; background: var(--g); box-shadow: 0 11px 22px rgba(29,196,91,.28); }
 #nav .fab .ic { width: 28px; height: 28px; stroke-width: 2.4; }
 #nav .fab:active { transform: scale(.94); }
 @keyframes in { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }

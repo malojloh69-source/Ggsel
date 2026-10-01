@@ -15,7 +15,7 @@ class DealTests(unittest.TestCase):
  def setUp(self):
   self.c=app.test_client()
   with db.tx() as c:
-   for table in ['deal_events','reviews','site_reviews','worker_reviews','work_reviews','join_attempts','promo_claims','txs','requisites','deals','balances','workers','admins','users']:
+   for table in ['deal_events','reviews','site_reviews','worker_reviews','work_reviews','worker_stats','join_attempts','promo_claims','txs','requisites','deals','balances','workers','admins','users']:
     c.execute('DELETE FROM '+table)
   db.grant_admin(1)
   config.DEV_MODE=True;config.PAYMENT_MODE='sandbox'
@@ -226,6 +226,34 @@ class DealTests(unittest.TestCase):
   config.PAYMENT_MODE='disabled'
   self.assertEqual(self.req('/api/worker/credit',2,'POST',{'amount':'1','currency':'RUB'}).status_code,403)
   self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'text':'Проба'}).status_code,503)
+ def test_worker_test_stats_are_persistent_and_separate_from_real_deals(self):
+  data={'completed':120,'rating':'4.7'}
+  self.assertEqual(self.req('/api/worker/stats',2,'POST',data).status_code,403)
+  db.grant_worker(2)
+  for bad in ({'completed':1.5,'rating':'4.7'}, {'completed':-1,'rating':'4.7'},
+              {'completed':1,'rating':'5.1'}, {'completed':1,'rating':'NaN'},
+              {'completed':1,'rating':'4.75'}):
+   self.assertEqual(self.req('/api/worker/stats',2,'POST',bad).status_code,400,bad)
+  self.assertEqual(self.req('/api/worker/stats',2,'POST',data).status_code,200)
+  panel=self.req('/api/worker',2).json
+  self.assertEqual(panel['test_stats'],{'completed':120,'rating':4.7})
+  stats=self.req('/api/me',2).json['stats']
+  self.assertEqual((stats['completed'],stats['rating'],stats['test_completed'],stats['test_rating']), (0,None,120,4.7))
+  self.assertEqual(self.req('/api/txs/withdraw',2,'POST',{'amount':'1','currency':'RUB','method':'card'}).status_code,403)
+  self.assertIsNone(self.req('/api/me',3).json['stats']['test_completed'])
+  db.init()
+  self.assertEqual(self.req('/api/worker',2).json['test_stats'],{'completed':120,'rating':4.7})
+  config.PAYMENT_MODE='disabled'
+  self.assertEqual(self.req('/api/worker/stats',2,'POST',data).status_code,403)
+  self.assertIsNone(self.req('/api/me',2).json['stats']['test_rating'])
+ def test_profile_rating_uses_existing_real_reviews(self):
+  d=self.paid();self.act(d,'confirm',2)
+  with db.tx() as c:
+   c.execute('INSERT INTO reviews(deal_id,author_id,target_id,rating,text,created) VALUES(?,?,?,?,?,?)',(d,1,2,4,'Старая оценка',1))
+  stats=self.req('/api/me',2).json['stats']
+  self.assertEqual(stats['completed'],1)
+  self.assertEqual(stats['rating'],4.0)
+  self.assertEqual(stats['reviews'],1)
  def test_site_review_and_turnover_summary(self):
   self.assertEqual(self.req('/api/reviews/mine',2).json,None)
   self.assertEqual(self.req('/api/reviews/mine',2,'POST',{'rating':5,'text':'Мой отзыв'}).status_code,503)

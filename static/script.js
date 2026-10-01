@@ -574,10 +574,13 @@ PG.profile = async () => {
   const u = me.user, s = me.stats;
   const name = u.username ? "@" + u.username : u.name || "Пользователь";
   const to = Object.entries(s.turnover).map(([c, v]) => fm(v, c)).join(" · ") || "0";
+  const testRating = s.test_rating !== null && s.test_rating !== undefined;
+  const rating = testRating ? s.test_rating : s.rating;
   const mi = (a, arg, ic, t, sm = "") => `<button class="mi" data-act="${a}" data-arg="${arg}"><i>${ico(ic)}</i><div>${t}${sm ? `<small>${sm}</small>` : ""}</div>${ico("chev")}</button>`;
   return `<div class="card profile-card"><div class="av lg">${u.photo?`<img src="${esc(u.photo)}" alt="Аватар профиля">`:esc((u.name||name).replace("@","")[0].toUpperCase())}</div><div><h1>${esc(u.name||name)}</h1><span class="bd green">${me.auth_verified ? "Вход через Telegram" : "Тестовый профиль"}</span><div class="mut">${esc(u.username?"@"+u.username:"")}</div><small class="mut">ID: ${u.id}</small></div></div>
   <div class="stats"><div class="stat">Завершено сделок<b>${s.completed}</b></div><div class="stat">Активных сейчас<b>${s.active}</b></div>
-  <div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div></div>
+  <div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div><div class="stat">${testRating ? "Рейтинг (тестовый)" : "Рейтинг"}<b>${rating === null || rating === undefined ? "—" : `${Number(rating).toFixed(1)} ★`}</b></div>
+  ${s.test_completed !== null && s.test_completed !== undefined ? `<div class="stat">Тестовых сделок<b>${s.test_completed}</b></div>` : ""}</div>
   ${dm()}<div class="group-label">УПРАВЛЕНИЕ</div>
   ${me.is_admin ? mi("go", "admin", "shield", "Админ-панель", "Управление платформой") : ""}
   ${me.is_worker ? mi("go", "worker", "wallet", "Ворк-панель", "Ваш баланс") : ""}
@@ -594,11 +597,19 @@ PG.worker = async () => {
   return `${bk}<h1>Ворк-панель</h1><div class="card"><b>Ваш баланс в приложении</b><p>${esc(balances)}</p><div class="hint">Показывает запись в базе. Денежный провайдер не подключён.</div></div>
   ${enabled ? `<div class="card"><h3>Начислить себе баланс</h3><label>Валюта</label>${chipsCur("wcur")}
     <label>Сумма</label><input id="wamount" inputmode="decimal" placeholder="Например, 100" autocomplete="off"><button class="btn" data-act="wcredit">Начислить</button><p class="mut">Начисление доступно только в режиме sandbox.</p></div>` : '<div class="card"><p>Начисления отключены.</p></div>'}
+  ${enabled ? `<div class="card"><h3>Тестовая статистика</h3><label>Количество сделок</label>
+    <input id="wcompleted" type="number" inputmode="numeric" min="0" max="1000000" step="1" value="${w.test_stats?.completed ?? 0}">
+    <label>Рейтинг (от 0 до 5)</label><input id="wrating" type="number" inputmode="decimal" min="0" max="5" step="0.1" value="${w.test_stats?.rating ?? 0}">
+    <button class="btn" data-act="wstats">Сохранить</button><p class="mut">Тестовые значения видны в профиле отдельно от завершённых сделок.</p></div>` : ""}
   `;
 };
 A.wcredit = (_, b) => busy(b, async () => {
   await api("/worker/credit", {method:"POST", body:{currency:$("#wcur .on").dataset.arg, amount:$("#wamount").value}});
   await refreshMe(); toast("Баланс обновлён"); render();
+});
+A.wstats = (_, b) => busy(b, async () => {
+  await api("/worker/stats", {method:"POST", body:{completed:Number($("#wcompleted").value), rating:$("#wrating").value}});
+  await refreshMe(); toast("Тестовая статистика обновлена"); render();
 });
 
 // admin panel
