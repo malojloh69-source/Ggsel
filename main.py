@@ -82,7 +82,7 @@ def luhn(s):
 def valid_req(kind, v):
     if kind == "card":
         v = re.sub(r"[ -]", "", v)
-        return v if re.fullmatch(r"\d{4}", v) else None
+        return v if re.fullmatch(r"\d{12,19}", v) and luhn(v) else None
     if kind == "ton":
         return v if re.fullmatch(r"[A-Za-z0-9_-]{48}", v) else None
     if kind == "usdt":
