@@ -238,20 +238,31 @@ class DealTests(unittest.TestCase):
   panel=self.req('/api/worker',2).json
   self.assertEqual(panel['test_stats'],{'completed':120,'rating':4.7})
   stats=self.req('/api/me',2).json['stats']
-  self.assertEqual((stats['completed'],stats['rating'],stats['test_completed'],stats['test_rating']), (0,None,120,4.7))
+  self.assertNotIn('completed',stats)
+  self.assertEqual((stats['rating'],stats['test_completed'],stats['test_rating']), (None,120,4.7))
   self.assertEqual(self.req('/api/txs/withdraw',2,'POST',{'amount':'1','currency':'RUB','method':'card'}).status_code,403)
-  self.assertIsNone(self.req('/api/me',3).json['stats']['test_completed'])
+  self.assertEqual(self.req('/api/me',3).json['stats']['test_completed'],0)
   db.init()
   self.assertEqual(self.req('/api/worker',2).json['test_stats'],{'completed':120,'rating':4.7})
+  d=self.create();self.act(d,'join',2);self.fund(2)
+  self.assertEqual(self.act(d,'pay',2).status_code,200)
+  self.assertEqual(self.act(d,'confirm',2).status_code,200)
+  stats=self.req('/api/me',2).json['stats']
+  self.assertNotIn('completed',stats)
+  self.assertEqual(stats['test_completed'],121)
+  self.assertEqual(len(self.req('/api/deals?filter=done',2).json),1)
+  self.assertEqual(self.req('/api/worker',2).json['test_stats']['completed'],120)
   config.PAYMENT_MODE='disabled'
   self.assertEqual(self.req('/api/worker/stats',2,'POST',data).status_code,403)
   self.assertIsNone(self.req('/api/me',2).json['stats']['test_rating'])
+  self.assertEqual(self.req('/api/me',2).json['stats']['test_completed'],1)
  def test_profile_rating_uses_existing_real_reviews(self):
   d=self.paid();self.act(d,'confirm',2)
   with db.tx() as c:
    c.execute('INSERT INTO reviews(deal_id,author_id,target_id,rating,text,created) VALUES(?,?,?,?,?,?)',(d,1,2,4,'Старая оценка',1))
   stats=self.req('/api/me',2).json['stats']
-  self.assertEqual(stats['completed'],1)
+  self.assertNotIn('completed',stats)
+  self.assertEqual(stats['test_completed'],1)
   self.assertEqual(stats['rating'],4.0)
   self.assertEqual(stats['reviews'],1)
  def test_site_review_and_turnover_summary(self):

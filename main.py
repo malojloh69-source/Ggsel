@@ -295,14 +295,15 @@ def me():
     )["n"]
     rating = db.row("SELECT AVG(rating) value, COUNT(*) n FROM reviews WHERE target_id=?", (uid,))
     test_stats = db.row("SELECT completed_count,rating_tenths FROM worker_stats WHERE user_id=?", (uid,)) if g.is_worker and config.PAYMENT_MODE == "sandbox" else None
+    completed = sum(r["n"] for r in done)
     return jsonify(
         user={"id": uid, "username": u["username"], "name": u["first_name"], "photo": u["photo"]},
         is_admin=g.is_admin, is_worker=g.is_worker, balances=bal,
         support=config.SUPPORT, demo=config.DEV_MODE, payment_mode=config.PAYMENT_MODE, auth_verified=not config.DEV_MODE,
         stats={
-            "completed": sum(r["n"] for r in done), "active": active,
+            "active": active,
             "rating": round(rating["value"], 1) if rating["n"] else None, "reviews": rating["n"],
-            "test_completed": test_stats["completed_count"] if test_stats else None,
+            "test_completed": completed + (test_stats["completed_count"] if test_stats else 0),
             "test_rating": test_stats["rating_tenths"] / 10 if test_stats else None,
             "turnover": {r["currency"]: fmt(r["s"]) for r in done},
         },
