@@ -597,7 +597,7 @@ PG.worker = async () => {
   return `${bk}<h1>Ворк-панель</h1><div class="card"><b>Ваш баланс в приложении</b><p>${esc(balances)}</p><div class="hint">Показывает запись в базе. Денежный провайдер не подключён.</div></div>
   ${enabled ? `<div class="card"><h3>Начислить себе баланс</h3><label>Валюта</label>${chipsCur("wcur")}
     <label>Сумма</label><input id="wamount" inputmode="decimal" placeholder="Например, 100" autocomplete="off"><button class="btn" data-act="wcredit">Начислить</button><p class="mut">Начисление доступно только в режиме sandbox.</p></div>` : '<div class="card"><p>Начисления отключены.</p></div>'}
-  ${enabled ? `<div class="card"><h3>Тестовая статистика</h3><label>Добавлено для тестового счётчика</label>
+  ${enabled ? `<div class="card"><h3>Настройки демостатистики</h3><label>Добавленное количество (демо)</label>
     <input id="wcompleted" type="number" inputmode="numeric" min="0" max="1000000" step="1" value="${w.test_stats?.completed ?? 0}">
     <label>Рейтинг (от 0 до 5)</label><input id="wrating" type="number" inputmode="decimal" min="0" max="5" step="0.1" value="${w.test_stats?.rating ?? 0}">
     <button class="btn" data-act="wstats">Сохранить</button><p class="mut">Счётчик в профиле включает завершённые сделки и добавленное здесь количество.</p></div>` : ""}
@@ -609,7 +609,7 @@ A.wcredit = (_, b) => busy(b, async () => {
 });
 A.wstats = (_, b) => busy(b, async () => {
   await api("/worker/stats", {method:"POST", body:{completed:Number($("#wcompleted").value), rating:$("#wrating").value}});
-  await refreshMe(); toast("Тестовая статистика обновлена"); render();
+  await refreshMe(); toast("Изменения сохранены"); render();
 });
 
 // admin panel
