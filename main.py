@@ -401,7 +401,7 @@ def create_deal():
     if cur not in config.CURRENCIES:
         return err("Выберите валюту")
     if len(desc) < 3 and not nft:
-        return err("Опишите товар или добавьте NFT-ссылки")
+        return err("Опишите товар или услугу либо добавьте NFT-ссылки")
     if db.row(
         "SELECT COUNT(*) n FROM deals WHERE creator_id=? AND status IN ('created','waiting_participant')", (uid,)
     )["n"] >= 30:

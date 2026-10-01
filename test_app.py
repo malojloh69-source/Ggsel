@@ -59,6 +59,18 @@ class DealTests(unittest.TestCase):
  def test_buyer_created_deal(self):
   d=self.create('buyer',2);self.assertEqual(self.act(d,'join',1).status_code,200)
   self.fund();self.assertEqual(self.act(d,'pay',2).status_code,200)
+ def test_generic_goods_deal_without_nft(self):
+  description='Бумажная книга: доставка после оплаты'
+  response=self.req('/api/deals',1,'POST',{'role':'seller','amount':'125.50','currency':'RUB','description':description})
+  self.assertEqual(response.status_code,200,response.json)
+  deal=response.json
+  self.assertEqual(deal['title'],description)
+  self.assertEqual(deal['nft'],[])
+  self.assertEqual(self.act(deal['id'],'join',2).status_code,200)
+  self.fund()
+  self.assertEqual(self.act(deal['id'],'pay',2).status_code,200)
+  self.assertEqual(self.act(deal['id'],'confirm',2).json['status'],'completed')
+  self.assertEqual(self.req('/api/deals/'+deal['id'],2).json['description'],description)
  def test_refund_once(self):
   d=self.paid();self.assertEqual(self.act(d,'refund',1).status_code,200)
   self.assertEqual(self.act(d,'refund',1).status_code,409)

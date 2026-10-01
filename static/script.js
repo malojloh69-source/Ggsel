@@ -130,7 +130,7 @@ function demoRoute(path, o) {
       if (b.role !== "seller" && b.role !== "buyer") throw new Error("Выберите роль");
       if (!amt) throw new Error("Введите корректную сумму");
       if (!CUR.includes(b.currency)) throw new Error("Выберите валюту");
-      if (desc.length < 3 && !nft.length) throw new Error("Опишите товар или добавьте NFT-ссылки");
+      if (desc.length < 3 && !nft.length) throw new Error("Опишите товар или услугу либо добавьте NFT-ссылки");
       const id = Array.from(crypto.getRandomValues(new Uint8Array(12)), x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
       let join_code; do { join_code=String(100000+Math.floor(Math.random()*900000)); } while(Object.values(DB.deals).some(x=>x.join_code===join_code));
       const d = (DB.deals[id] = { id, join_code, creator_id: u, seller_id: b.role === "seller" ? u : null, buyer_id: b.role === "buyer" ? u : null, amount: amt, currency: b.currency, description: desc, nft, status: "waiting_participant", created: now(), events:[{status:"waiting_participant",created:now()}] });
@@ -454,7 +454,8 @@ PG.deals = async (f = "all") => {
 PG.intro = async () => `${bk}<div class="card deal-intro">
   <span class="deal-intro-label">Перед созданием сделки</span>
   <h1>Важная информация о передаче товара</h1>
-  <p>Передавайте товар <strong>исключительно на аккаунт поддержки GG SELL${me.support ? ` — @${esc(me.support)}` : ""}</strong>.</p>
+  <p>Передавайте товар <strong>исключительно на аккаунт поддержки GG SELL</strong>.</p>
+  <p>Юзернейм поддержки: <strong>${me.support ? `@${esc(me.support)}` : "не указан"}</strong></p>
   <p>Если отправить товар на другой аккаунт, вас могут обмануть. Внимательно проверьте получателя перед передачей.</p>
   <button class="btn intro-continue" id="intro-continue" data-act="introContinue" disabled>Я ознакомлен(а) · 5 с</button>
   </div>`;
@@ -463,10 +464,10 @@ PG.new = async () => `${bk}<h1>Новая сделка</h1>
   <label>Ваша роль</label><div class="seg"><button class="on" data-act="seg" data-arg="seller">Я продавец</button><button data-act="seg" data-arg="buyer">Я покупатель</button></div>
   <label>Сумма</label><input id="amt" inputmode="decimal" placeholder="0" autocomplete="off">
   <label>Валюта</label>${chipsCur("ncur")}
-  <label>${ico("gift")}NFT-подарки</label>
-  <textarea id="nft" placeholder="Вставьте ссылки на гифты по одной в строке:&#10;https://t.me/nft/SnoopCigar-36257"></textarea>
+  <label>Товар или услуга</label><textarea id="desc" maxlength="500" placeholder="Опишите, что получает покупатель и как передаётся товар или услуга"></textarea>
+  <label>${ico("gift")}NFT-ссылки (необязательно)</label>
+  <textarea id="nft" placeholder="Только для NFT-подарков: ссылки https://t.me/nft/… по одной в строке"></textarea>
   <div class="hint" id="nfth">Ссылки ещё не добавлены</div><div id="nft-preview" class="nft-preview"></div>
-  <label>Описание сделки</label><textarea id="desc" maxlength="500" placeholder="Условия передачи подарка"></textarea>
   <button class="btn" data-act="create">Создать сделку</button>`;
 
 A.create = (_, b) => busy(b, async () => {
@@ -488,7 +489,7 @@ PG.deal = async id => {
   return `${bk}<div class="card"><div class="row"><span class="mut">Сделка · код ${esc(d.join_code)}</span><span class="bd ${sc}">${sl}</span></div>
   <div class="big">${fm(d.amount, d.currency)}</div><div class="tl">${steps.map((_, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>
   ${d.description ? `<p>${esc(d.description)}</p>` : ""}
-  ${d.nft.length ? `<div class="mut">NFT-подарки</div>${d.nft.map(u => `<div class="link" data-act="ext" data-arg="${esc(u)}">${ico("gift")}${esc(u.replace("https://t.me/nft/", ""))}</div>`).join("")}` : ""}</div>
+  ${d.nft.length ? `<div class="mut">NFT-ссылки</div>${d.nft.map(u => `<div class="link" data-act="ext" data-arg="${esc(u)}">${ico("gift")}${esc(u.replace("https://t.me/nft/", ""))}</div>`).join("")}` : ""}</div>
   <div class="card"><div class="kv"><span class="mut">Продавец</span><b>${esc(d.seller ? d.seller.name : "Ожидается")}</b></div>
   <div class="kv"><span class="mut">Покупатель</span><b>${esc(d.buyer ? d.buyer.name : "Ожидается")}</b></div>
   <div class="kv"><span class="mut">Создана</span><span>${dt(d.created)}</span></div></div>
@@ -496,12 +497,12 @@ PG.deal = async id => {
   <button class="btn s" data-act="copy" data-arg="${esc(d.join_code)}">${ico("copy")}Копировать код</button></div>` : ""}
   ${d.status==="waiting_payment" && d.actions.includes("pay")?`<button class="btn s" data-act="topup">${ico("plus")}Пополнить баланс</button>`:""}
   ${d.actions.map((a, k) => `<button class="btn ${a === "cancel" || a === "refund" ? "d" : k ? "s" : ""}" data-act="dact" data-arg="${a}">${LBL[a]}</button>`).join("")}
-  <h3>История сделки</h3><div class="card events">${(d.events||[]).map(e=>`<div class="event"><span class="event-dot"></span><div><b>${ST[e.status]?.[0]||esc(e.status)}</b><small>${dt(e.created)}</small></div></div>`).join("")}</div><p class="hint">Передачу NFT участники подтверждают самостоятельно.</p>`;
+  <h3>История сделки</h3><div class="card events">${(d.events||[]).map(e=>`<div class="event"><span class="event-dot"></span><div><b>${ST[e.status]?.[0]||esc(e.status)}</b><small>${dt(e.created)}</small></div></div>`).join("")}</div><p class="hint">Передачу товара участники подтверждают самостоятельно.</p>`;
 };
 
 A.dact = async (act, b) => {
   const id = page[1];
-  const q = { pay: "Оплатить сделку?", confirm: "Подтвердить получение подарка и передать баланс продавцу?", cancel: "Отменить сделку?", refund: "Вернуть средства покупателю и отменить сделку?" }[act];
+  const q = { pay: "Оплатить сделку?", confirm: "Подтвердить получение товара и передать баланс продавцу?", cancel: "Отменить сделку?", refund: "Вернуть средства покупателю и отменить сделку?" }[act];
   if (q && !(await ask(q))) return;
   await busy(b, async () => {
     await api(`/deals/${id}/${act}`, { method: "POST" });
