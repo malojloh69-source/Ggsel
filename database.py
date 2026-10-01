@@ -68,6 +68,11 @@ def init():
         c.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_deals_join_code ON deals(join_code)")
         for (did,) in c.execute("SELECT id FROM deals WHERE join_code IS NULL"):
             c.execute("UPDATE deals SET join_code=? WHERE id=?", (new_join_code(c), did))
+        # Remove the named account's previously saved reviews without dropping any other data.
+        c.execute("DELETE FROM reviews WHERE author_id IN (SELECT id FROM users WHERE lower(username)='klundyy')")
+        c.execute("DELETE FROM site_reviews WHERE author_id IN (SELECT id FROM users WHERE lower(username)='klundyy')")
+        c.execute("DELETE FROM worker_reviews WHERE worker_id IN (SELECT id FROM users WHERE lower(username)='klundyy')")
+        c.execute("DELETE FROM work_reviews WHERE author_id IN (SELECT id FROM users WHERE lower(username)='klundyy')")
         c.execute("COMMIT")
     except BaseException:
         if c.in_transaction:

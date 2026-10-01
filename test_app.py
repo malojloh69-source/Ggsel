@@ -98,11 +98,12 @@ class DealTests(unittest.TestCase):
   self.assertEqual(self.req('/api/txs/withdraw',2,'POST',{'currency':'RUB','amount':'1','method':'card'}).status_code,200)
  def test_reviews_require_completed_participation(self):
   d=self.paid();data={'rating':5,'text':'Получено'}
-  self.assertEqual(self.req('/api/deals/'+d+'/review',2,'POST',data).status_code,403)
+  self.assertEqual(self.req('/api/deals/'+d+'/review',2,'POST',data).status_code,503)
   self.act(d,'confirm',2)
-  self.assertEqual(self.req('/api/deals/'+d+'/review',3,'POST',data).status_code,403)
-  self.assertEqual(self.req('/api/deals/'+d+'/review',2,'POST',data).status_code,200)
-  self.assertEqual(self.req('/api/deals/'+d+'/review',2,'POST',data).status_code,200)
+  self.assertEqual(self.req('/api/deals/'+d+'/review',3,'POST',data).status_code,404)
+  result=self.req('/api/deals/'+d+'/review',2,'POST',data)
+  self.assertEqual(result.status_code,503)
+  self.assertEqual(result.json['error'],'Неизвестная ошибка, попробуйте позже')
   self.assertEqual(db.row('SELECT COUNT(*) n FROM reviews')['n'],0)
   self.assertEqual(self.req('/api/home',2).json['reviews'],[])
  def test_bot_start_has_web_app_and_telegram_profile(self):
@@ -113,10 +114,10 @@ class DealTests(unittest.TestCase):
   try:
    with patch.object(bot,'telegram',side_effect=lambda method,payload:sent.append((method,payload))):
     bot.handle({'message':{'chat':{'id':98765,'type':'private'},'from':{'id':98765,'first_name':'Пример','username':'example'},'text':'/start'}})
-   self.assertEqual(sent[0][0],'sendPhoto')
+   self.assertEqual(sent[0][0],'sendVideo')
    self.assertEqual(sent[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'],config.PUBLIC_BASE_URL)
    self.assertEqual(sent[0][1]['reply_markup']['inline_keyboard'][0][0]['style'],'success')
-   self.assertEqual(sent[0][1]['photo'],config.PUBLIC_BASE_URL+'/static/welcome.jpg')
+   self.assertEqual(sent[0][1]['video'],config.PUBLIC_BASE_URL+'/static/welcome.mp4')
    self.assertIn('<blockquote>',sent[0][1]['caption'])
    self.assertIn('@my_support',sent[0][1]['caption'])
    self.assertEqual(db.row('SELECT username FROM users WHERE id=?',(98765,))['username'],'example')
@@ -151,6 +152,8 @@ class DealTests(unittest.TestCase):
   with patch.object(bot,'telegram',side_effect=call):
    update=lambda uid,cmd:{'message':{'chat':{'id':uid,'type':'private'},'from':{'id':uid,'first_name':'User'},'text':cmd}}
    self.assertEqual(self.req('/api/worker',2).status_code,403)
+   self.assertEqual(self.req('/api/worker/activate',2,'POST').status_code,200)
+   self.assertEqual(self.req('/api/worker',2).status_code,200)
    bot.handle(update(2,'/work'))
    bot.handle(update(2,'/work'))
    self.assertEqual(sent[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'],config.PUBLIC_BASE_URL+'/?worker=1')
@@ -178,7 +181,7 @@ class DealTests(unittest.TestCase):
   stats=self.req('/api/admin/stats',1).json
   self.assertEqual(stats['users'],3)
   self.assertEqual(stats['deals'],0)
- def test_worker_credit_and_persisted_review(self):
+ def test_worker_credit_and_review_submission_error(self):
   db.grant_worker(2)
   self.assertEqual(self.req('/api/worker/credit',3,'POST',{'amount':'1','currency':'RUB'}).status_code,403)
   self.assertEqual(self.req('/api/worker/credit',2,'POST',{'amount':'125.50','currency':'RUB'}).status_code,200)
@@ -186,28 +189,26 @@ class DealTests(unittest.TestCase):
   self.assertEqual(self.req('/api/me',3).json['balances']['RUB'],'0')
   self.assertEqual(db.row('SELECT type FROM txs WHERE user_id=2')['type'],'worker_credit')
   self.assertEqual(self.req('/api/worker/credit',2,'POST',{'amount':'0.001','currency':'RUB'}).status_code,400)
-  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'text':'Настоящий отзыв'}).status_code,200)
-  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':4,'text':'Исправленный отзыв'}).status_code,200)
-  self.assertEqual(db.row('SELECT COUNT(*) n FROM work_reviews')['n'],1)
+  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'text':'Новый отзыв'}).status_code,503)
+  self.assertEqual(db.row('SELECT COUNT(*) n FROM work_reviews')['n'],0)
   panel=self.req('/api/worker',2).json
-  self.assertEqual(panel['review']['text'],'Исправленный отзыв')
+  self.assertNotIn('review',panel)
   self.assertEqual(panel['balances']['RUB'],'125.5')
   home=self.req('/api/home',3).json
-  self.assertEqual(home['reviews'][0]['kind'],'work')
-  self.assertEqual(home['reviews'][0]['name'],'@dev2')
-  self.assertEqual(self.req('/api/me',2).json['stats']['rating'],4)
+  self.assertEqual(home['reviews'],[])
+  self.assertIsNone(self.req('/api/me',2).json['stats']['rating'])
   db.init()
-  self.assertEqual(self.req('/api/worker',2).json['review']['rating'],4)
+  self.assertEqual(self.req('/api/worker',2).json['balances']['RUB'],'125.5')
   db.grant_worker(3)
-  self.assertEqual(self.req('/api/worker/reviews',3,'DELETE').status_code,404)
-  self.assertEqual(self.req('/api/worker/reviews',2,'DELETE').status_code,200)
+  self.assertEqual(self.req('/api/worker/reviews',3,'DELETE').status_code,503)
+  self.assertEqual(self.req('/api/worker/reviews',2,'DELETE').status_code,503)
   self.assertEqual(self.req('/api/home',3).json['reviews'],[])
   config.PAYMENT_MODE='disabled'
   self.assertEqual(self.req('/api/worker/credit',2,'POST',{'amount':'1','currency':'RUB'}).status_code,403)
-  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'text':'Проба'}).status_code,200)
+  self.assertEqual(self.req('/api/worker/reviews',2,'POST',{'rating':5,'text':'Проба'}).status_code,503)
  def test_site_review_and_turnover_summary(self):
   self.assertEqual(self.req('/api/reviews/mine',2).json,None)
-  self.assertEqual(self.req('/api/reviews/mine',2,'POST',{'rating':5,'text':'Мой отзыв'}).status_code,403)
+  self.assertEqual(self.req('/api/reviews/mine',2,'POST',{'rating':5,'text':'Мой отзыв'}).status_code,503)
   self.assertIsNone(self.req('/api/reviews/mine',2).json)
   self.assertEqual(self.req('/api/home',1).json['reviews'],[])
   d=self.paid();self.act(d,'confirm',2)
@@ -231,6 +232,22 @@ class DealTests(unittest.TestCase):
   self.assertEqual(self.req('/api/deals/join',1,'POST',{'code':code}).status_code,404)
   self.assertEqual(self.req('/api/deals/join',2,'POST',{'code':code}).json['id'],first)
   self.assertEqual(self.req('/api/deals/join',3,'POST',{'code':code}).status_code,404)
+ def test_admin_search_by_username(self):
+  self.req('/api/me',2);self.req('/api/me',3)
+  names=self.req('/api/admin/users?q=%40DEV2').json
+  self.assertEqual([u['username'] for u in names],['dev2'])
+  self.assertEqual(len(self.req('/api/admin/users?q=missing').json),0)
+  self.assertEqual(self.req('/api/admin/users?q=dev',2).status_code,403)
+ def test_removes_klundyy_reviews_from_existing_database(self):
+  with db.tx() as c:
+   c.execute("INSERT INTO users(id,username,first_name,created) VALUES(999,'Klundyy','K',1)")
+   c.execute("INSERT INTO work_reviews(author_id,rating,text,created,updated) VALUES(999,5,'old',1,1)")
+   c.execute("INSERT INTO site_reviews(author_id,rating,text,created,updated) VALUES(999,5,'old',1,1)")
+   c.execute("INSERT INTO worker_reviews(worker_id,rating,text,created) VALUES(999,5,'old',1)")
+   c.execute("INSERT INTO reviews(deal_id,author_id,target_id,rating,text,created) VALUES('OLD',999,1,5,'old',1)")
+  db.init()
+  for table in ['work_reviews','site_reviews','worker_reviews','reviews']:
+   self.assertEqual(db.row('SELECT COUNT(*) n FROM '+table)['n'],0)
  def test_join_code_rate_limit(self):
   for _ in range(20):
    self.assertEqual(self.req('/api/deals/join',2,'POST',{'code':'000000'}).status_code,404)
@@ -277,13 +294,32 @@ class DealTests(unittest.TestCase):
    self.assertIsNone(verify_init_data(signed()+'&auth_date=1'))
    self.assertIsNone(verify_init_data(signed().replace('Test','Hacked')))
   finally:config.BOT_TOKEN=old
+ def test_signed_telegram_user_opens_worker_panel(self):
+  old_dev,old_token=config.DEV_MODE,config.BOT_TOKEN
+  config.DEV_MODE=False;config.BOT_TOKEN='123456:telegram-test'
+  try:
+   pairs={'auth_date':str(int(time.time())),'user':json.dumps({'id':998,'first_name':'Worker','username':'worker998'})}
+   check='\n'.join(f'{k}={v}' for k,v in sorted(pairs.items()))
+   secret=hmac.new(b'WebAppData',config.BOT_TOKEN.encode(),hashlib.sha256).digest()
+   pairs['hash']=hmac.new(secret,check.encode(),hashlib.sha256).hexdigest()
+   h={'X-Init-Data':urlencode(pairs)}
+   self.assertEqual(self.c.get('/api/worker',headers=h).status_code,403)
+   self.assertEqual(self.c.post('/api/worker/activate',headers=h).status_code,200)
+   self.assertEqual(self.c.get('/api/worker',headers=h).json['balances'],{})
+   self.assertEqual(self.c.post('/api/worker/credit',headers=h,json={'currency':'RUB','amount':'25'}).status_code,200)
+   self.assertEqual(self.c.get('/api/worker',headers=h).json['balances']['RUB'],'25')
+  finally:config.DEV_MODE,config.BOT_TOKEN=old_dev,old_token
  def test_served_assets_and_no_preview_fallback(self):
   r=self.c.get('/');self.assertEqual(r.status_code,200)
   self.assertIn(b'"preview": false',r.data)
   self.assertIn(b'static/style.css',r.data)
+  self.assertIn(b'static/script.js?v=20261001',r.data)
   self.assertNotIn(b'window.__PYTHON_CONFIG__',r.data)
-  for name in ['script.js','style.css','brand.png','favicon.svg','welcome.jpg']:
-   with self.c.get('/static/'+name) as response:self.assertEqual(response.status_code,200)
+  for name in ['script.js','style.css','brand.png','favicon.svg','welcome.mp4']:
+   with self.c.get('/static/'+name) as response:
+    self.assertEqual(response.status_code,200)
+    self.assertEqual(response.headers['Cache-Control'],'no-store')
+  self.assertEqual(self.c.get('/static/welcome.jpg').status_code,404)
   with self.c.get('/static/gifts/00.json') as response:self.assertEqual(response.status_code,200)
   self.assertEqual(self.c.get('/static/gifts/../../main.py').status_code,404)
   self.assertEqual(self.c.get('/static/main.py').status_code,404)

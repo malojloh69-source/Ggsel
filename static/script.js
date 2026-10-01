@@ -34,7 +34,6 @@ const mask = v => (v.length > 10 ? v.slice(0, 4) + " •••• " + v.slice(-4
 
 const view = $("#view");
 let me = null, cur = localStorage.getItem("deal_currency") || "RUB", page = ["home"], stack = [], tok = 0, sh = null;
-let transientReviews = []; // In memory only; a page reload clears these previews.
 const A = {}, PG = {};
 
 // ------------------------------------------------------------ core helpers
@@ -107,7 +106,7 @@ function demoRoute(path, o) {
     const done = mine().filter(d => d.status === "completed"), to = {};
     done.forEach(d => (to[d.currency] = String(r8((+to[d.currency] || 0) + d.amount))));
     return {
-      user: { id: u, username: usr(u).username, name: usr(u).name, photo: null }, is_admin: !!DB.admins[u], is_worker: false, balances: bl, my_review:null, support: CFG.support || "", demo: true, payment_mode:"sandbox", auth_verified:false,
+      user: { id: u, username: usr(u).username, name: usr(u).name, photo: null }, is_admin: !!DB.admins[u], is_worker: false, balances: bl, support: CFG.support || "", demo: true, payment_mode:"sandbox", auth_verified:false,
       stats: { completed: done.length, active: mine().filter(d => !FINAL.includes(d.status)).length, rating: null, reviews: 0, turnover: to },
     };
   }
@@ -121,7 +120,7 @@ function demoRoute(path, o) {
   if (R === "home") return { deals: mine().slice(0, 5).map(d => viewD(d, u)), reviews: [] };
   if (R === "reviews" && s[1] === "mine") {
     if (m === "GET") return null;
-    throw new Error("Постоянный отзыв можно оставить в ворк-панели");
+    throw new Error("Неизвестная ошибка, попробуйте позже");
   }
   if (R === "deals") {
     if (s.length === 1 && m === "GET") { const f = q.get("filter"); return mine().filter(d => f === "active" ? !FINAL.includes(d.status) : f === "done" ? d.status === "completed" : true).map(d => viewD(d, u)); }
@@ -151,10 +150,7 @@ function demoRoute(path, o) {
     }
     const a = s[2];
     if (a === "review") {
-      const r = b.rating;
-      if (d.status !== "completed" || (u !== d.seller_id && u !== d.buyer_id)) throw new Error("Отзыв недоступен");
-      if (!Number.isInteger(r) || r < 1 || r > 5) throw new Error("Поставьте оценку от 1 до 5");
-      return {ok:true,review:{deal_id:d.id,author_id:u,rating:r,text:String(b.text||"").trim().slice(0,300),created:now(),kind:"deal_preview",name:"@"+usr(u).username}};
+      throw new Error("Неизвестная ошибка, попробуйте позже");
     }
     if (!allowedD(d, u).includes(a)) throw new Error("Действие сейчас недоступно");
     if (a === "pay") { mv(u, d.currency, -d.amount); tlog(u, "deal_pay", d.currency, d.amount, "done", d.id); d.status = "paid"; }
@@ -192,7 +188,7 @@ function demoRoute(path, o) {
       return {users:Object.keys(DB.users).length,deals:Object.keys(DB.deals).length,completed:done.length,turnover};
     }
     if (W === "requests") return DB.txs.filter(t => t.status === "pending").reverse();
-    if (W === "users" && m === "GET") return Object.values(DB.users).map(x => { const bl = {}; CUR.forEach(c => { if (bal(x.id, c) > 0) bl[c] = String(bal(x.id, c)); }); return { id: x.id, username: x.username, first_name: x.name, blocked: x.blocked, created: x.created, balances: bl }; });
+    if (W === "users" && m === "GET") return Object.values(DB.users).filter(x=>(x.username||"").toLowerCase().includes((q.get("q")||"").replace(/^@/,"").toLowerCase())).map(x => { const bl = {}; CUR.forEach(c => { if (bal(x.id, c) > 0) bl[c] = String(bal(x.id, c)); }); return { id: x.id, username: x.username, first_name: x.name, blocked: x.blocked, created: x.created, balances: bl }; });
     if (W === "deals" && m === "GET") return Object.values(DB.deals).sort((x, y) => y.created - x.created).map(d => viewD(d, 0));
     if (W === "users") {
       const id = +s[2];
@@ -351,10 +347,71 @@ const dealCard = d => {
   <div class="row mut" style="margin-top:6px"><span>Код ${esc(d.join_code||"—")}</span><b style="color:var(--ink)">${fm(d.amount, d.currency)}</b></div></div>`;
 };
 const reviewCard = r => `<div class="card"><div class="row"><div class="row" style="justify-content:flex-start"><div class="av">${esc((r.name.replace("@", "")[0] || "U").toUpperCase())}</div>
-  <div><b>${esc(r.name)}</b>${r.kind?.endsWith("_preview") ? '<small class="mut">До обновления страницы</small>' : ""}</div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p>${esc(r.text)}</p>` : ""}</div>`;
+  <div><b>${esc(r.name)}</b></div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p>${esc(r.text)}</p>` : ""}</div>`;
+const SCREENSHOT_REVIEWS = [
+  ["@Алексей", 5, "Нормально"], ["@buyer_pro", 5, "Всё четко,без скама"],
+  ["@thevlastov", 5, "Красава не обманул"], ["@pavel_msk", 5, "Уже третья сделка, всё гладко"],
+  ["@bobofonw", 3, "советую"], ["@VajnixyXD", 5, "поверил на слово, не наебал спасибо"],
+  ["@воздух я", 5, "имба бляя"], ["@gartechikq", 4, "Норм но доверия не много даже после использования"],
+  ["@bododods", 5, "Лайк, не кинули"], ["@awangardiks", 5, "Сервис пушка"],
+  ["@FunPayHold", 5, "Ну вроде не кинули, деньги заплатили"],
+  ["@cryptowertty", 5, "нормально"], ["@tupoy_genniy", 5, "заебок"],
+  ["@buyer_pro", 5, "не наеб"], ["@buyer_pro", 5, "не наеб"],
+  ["@buyer_pro", 5, "афигеннг спасибо продал нфт"], ["@buyer_pro", 5, "кайф"],
+  ["@stepan_msc", 5, "Лучший сервис для сделок с подарками"],
+  ["@kate_moon", 5, "Комиссия маленькая, всё прозрачно"], ["@buyer_pro", 5, "топчик"],
+  ["@danyasssjer", 5, "Быстро и за норм прайс+реп"],
+  ["@lovemybaby", 5, "Сделка прошла отлично, рекомендую"],
+  ["@kirill_tg", 5, "Гарант всё чётко проверил, спасибо!"],
+  ["@sasha_nft", 5, "Скинул подарок, деньги пришли почти сразу"],
+  ["@egorka_spb", 5, "Сделка прошла отлично, рекомендую"],
+  ["@egorka_spb", 4, "нормально"], ["@maxpower", 4, "Уже третья сделка, всё гладко"],
+  ["@sweetdreamz", 5, "Оперативно, никаких задержек"],
+  ["@sweetdreamz", 5, "Отличная поддержка, помогли разобраться"],
+  ["@tonlover", 5, "Комиссия маленькая, всё прозрачно"],
+  ["@miloradik", 5, "Комиссия маленькая, всё прозрачно"],
+  ["@roman_x", 5, "Комиссия маленькая, всё прозрачно"],
+  ["@egorka_spb", 5, "Скинул подарок, деньги пришли почти сразу"],
+  ["@kate_moon", 5, "Гарант всё чётко проверил, спасибо!"],
+  ["@vano228", 5, "Красавцы, всё по-честному"],
+  ["@maxpower", 4, "Просто и понятно, разобрался за минуту"],
+  ["@kirill_tg", 5, "Ахуенный ботик, быстро провели сделку, советую всем"],
+  ["@roman_x", 5, "Отличная поддержка, помогли разобраться"],
+  ["@anyuta", 5, "Продал подарок за 5 минут, супер сервис"],
+  ["@sasha_nft", 5, "Отличная поддержка, помогли разобраться"],
+  ["@denchik", 5, "Комиссия маленькая, всё прозрачно"],
+  ["@kirill_tg", 5, "Скинул подарок, деньги пришли почти сразу"],
+  ["@miloradik", 5, "Лучший сервис для сделок с подарками"],
+  ["@аноним", 5, "Продал подарок за 5 минут, супер сервис"],
+  ["@dashka99", 5, "Реально безопасно, гарант не подведёт"],
+  ["@miloradik", 4, "Сработало, но не сразу понял как выводить"],
+  ["@artem_pro", 5, "Красавцы, всё по-честному"],
+  ["@zaycev_go", 5, "Просто и понятно, разобрался за минуту"],
+  ["@artem_pro", 5, "Гарант всё чётко проверил, спасибо!"],
+  ["@nikita_spb", 5, "Гарант на связи 24/7, реально помогают"],
+  ["@sasha_nft", 5, "Сделка прошла отлично, рекомендую"],
+  ["@аноним", 5, "Просто и понятно, разобрался за минуту"],
+  ["@egorka_spb", 5, "Гарант всё чётко проверил, спасибо!"],
+  ["@zaycev_go", 4, "Всё ок, но хотелось бы больше валют"],
+  ["@аноним", 5, "Быстро и без проблем, деньги пришли сразу"],
+  ["@giftmaster", 5, "Отличная поддержка, помогли разобраться"],
+  ["@kate_moon", 5, "Уже не первый раз пользуюсь, всё стабильно"],
+  ["@kate_moon", 5, "Просто и понятно, разобрался за минуту"],
+  ["@bogdan_007", 5, "Скинул подарок, деньги пришли почти сразу"],
+  ["@dashka99", 4, "Всё ок, но хотелось бы больше валют"],
+  ["@roman_x", 5, "Быстро и без проблем, деньги пришли сразу"],
+  ["@miloradik", 5, "Оперативно, никаких задержек"],
+  ["@lovemybaby", 4, "Всё как и обещали, доволен"],
+  ["@lera_v", 5, "Всё как и обещали, доволен"],
+  ["@artem_pro", 5, "Скинул подарок, деньги пришли почти сразу"],
+  ["@dashka99", 4, "Нормально, но пришлось подождать пару минут"],
+  ["@quickbuyer", 5, "Понятный интерфейс и удобные статусы сделки."],
+  ["@neontrade", 5, "Очень удобный сервис, провожу сделки не первый раз, проблем не было."]
+].filter(([name]) => name.toLowerCase() !== "@klundyy").map(([name, rating, text]) => ({ name, rating, text, source: "screenshot" }));
+
 PG.home = async () => {
   const [h] = await Promise.all([api("/home"),refreshMe()]);
-  const reviews=[...transientReviews.filter(r=>r.author_id===me.user.id).reverse(),...h.reviews];
+  const reviews=[...h.reviews,...SCREENSHOT_REVIEWS];
   return `<div class="hero"><span class="tag">Сделки в Telegram</span><h2>P2P-сделки<br>с понятным статусом</h2><p>Создайте сделку, пригласите участника и следите за каждым этапом.</p><span class="hero-g" aria-hidden="true">G</span>
   <button class="btn w sm" data-act="new">Создать сделку ${ico("arrow")}</button></div>
   <h3>Быстрые действия</h3><div class="qa"><button data-act="new"><i>${ico("plus")}</i>Новая сделка</button><button data-act="joinsheet"><i>${ico("box")}</i>Вступить в<br>сделку</button><button data-act="tab" data-arg="deals"><i>${ico("gem")}</i>Мои сделки</button></div>
@@ -410,7 +467,7 @@ PG.deal = async id => {
   <button class="btn s" data-act="copy" data-arg="${esc(d.join_code)}">${ico("copy")}Копировать код</button></div>` : ""}
   ${d.status==="waiting_payment" && d.actions.includes("pay")?`<button class="btn s" data-act="topup">${ico("plus")}Пополнить баланс</button>`:""}
   ${d.actions.map((a, k) => `<button class="btn ${a === "cancel" || a === "refund" ? "d" : k ? "s" : ""}" data-act="dact" data-arg="${a}">${LBL[a]}</button>`).join("")}
-  ${d.can_review && !transientReviews.some(r=>r.author_id===me.user.id&&r.deal_id===d.id) ? `<button class="btn s" data-act="rvdeal">Оставить отзыв до обновления страницы</button>` : ""}
+  ${d.can_review ? `<button class="btn s" data-act="rvdeal">Оставить отзыв</button>` : ""}
   <h3>История сделки</h3><div class="card events">${(d.events||[]).map(e=>`<div class="event"><span class="event-dot"></span><div><b>${ST[e.status]?.[0]||esc(e.status)}</b><small>${dt(e.created)}</small></div></div>`).join("")}</div><p class="hint">Передачу NFT участники подтверждают самостоятельно.</p>`;
 };
 
@@ -432,33 +489,9 @@ A.joingo = (_, b) => busy(b, async () => {
   closeSheet(); go("deal",d.id);
 });
 
-// reviews
-function reviewSheet(ids) {
-  sheet(`<h2>Отзыв о сделке</h2>
-  <label>Сделка</label><div class="chips" id="rvd" style="margin:0">${ids.map((i, k) => `<button class="chip ${ids.length === 1 || k === 0 ? "on" : ""}" data-act="seg" data-arg="${i}">#${i}</button>`).join("")}</div>
-  <label>Оценка</label><div class="grid3" id="rate" style="grid-template-columns:repeat(5,1fr)">${[1, 2, 3, 4, 5].map(n => `<button class="opt ${n === 5 ? "on" : ""}" data-act="seg" data-arg="${n}">${n}★</button>`).join("")}</div>
-  <label>Комментарий</label><textarea id="rvt" maxlength="300" placeholder="Как прошла сделка?"></textarea>
-  <button class="btn" data-act="rvsend">Отправить отзыв</button>`);
-}
-A.rvdeal = () => reviewSheet([page[1]]);
-A.rvhome = async () => {
-  const old=transientReviews.findLast(r=>r.author_id===me.user.id&&r.kind==="site_preview");
-  sheet(`<h2>Мой отзыв</h2><p class="mut">Он будет виден до обновления страницы. Постоянный отзыв сохраняется в ворк-панели.</p>
-    <label>Оценка</label><div class="grid3" id="rate" style="grid-template-columns:repeat(5,1fr)">${[1,2,3,4,5].map(n=>`<button class="opt ${n===(old?.rating||5)?"on":""}" data-act="seg" data-arg="${n}">${n}★</button>`).join("")}</div>
-    <label>Комментарий</label><textarea id="rvt" maxlength="300" placeholder="Ваш отзыв">${esc(old?.text||"")}</textarea><button class="btn" data-act="siteresend">Показать отзыв</button>`);
-};
-A.siteresend = (_, b) => busy(b, async () => {
-  const text=$("#rvt").value.trim().slice(0,300);
-  if(!text) throw new Error("Напишите отзыв");
-  transientReviews=transientReviews.filter(r=>!(r.author_id===me.user.id&&r.kind==="site_preview"));
-  transientReviews.push({author_id:me.user.id,rating:+$("#rate .on").dataset.arg,text,created:now(),kind:"site_preview",name:me.user.username?"@"+me.user.username:me.user.name||"Пользователь"});
-  closeSheet(); toast("Отзыв виден до обновления страницы"); render();
-});
-A.rvsend = (_, b) => busy(b, async () => {
-  const r=await api(`/deals/${$("#rvd .on").dataset.arg}/review`, { method: "POST", body: { rating: +$("#rate .on").dataset.arg, text: $("#rvt").value } });
-  transientReviews.push({...r.review,author_id:me.user.id});
-  closeSheet(); haptic("success"); toast("Отзыв виден до обновления страницы"); render();
-});
+// The review action reports the same error as the API and never writes to storage.
+A.rvdeal = () => toast("Неизвестная ошибка, попробуйте позже", 1);
+A.rvhome = () => toast("Неизвестная ошибка, попробуйте позже", 1);
 
 // requisites & balance
 PG.reqs = async () => {
@@ -510,18 +543,16 @@ PG.ops = async () => {
 PG.profile = async () => {
   await refreshMe();
   const u = me.user, s = me.stats;
-  const latest=transientReviews.filter(r=>r.author_id===u.id).at(-1);
-  const own=latest|| (me.my_review ? {rating:me.my_review.rating,text:me.my_review.text,name:u.username?"@"+u.username:u.name||"Пользователь",kind:"work"} : null);
   const name = u.username ? "@" + u.username : u.name || "Пользователь";
   const to = Object.entries(s.turnover).map(([c, v]) => fm(v, c)).join(" · ") || "0";
   const mi = (a, arg, ic, t, sm = "") => `<button class="mi" data-act="${a}" data-arg="${arg}"><i>${ico(ic)}</i><div>${t}${sm ? `<small>${sm}</small>` : ""}</div>${ico("chev")}</button>`;
   return `<div class="card profile-card"><div class="av lg">${u.photo?`<img src="${esc(u.photo)}" alt="Аватар профиля">`:esc((u.name||name).replace("@","")[0].toUpperCase())}</div><div><h1>${esc(u.name||name)}</h1><span class="bd green">${me.auth_verified ? "Вход через Telegram" : "Тестовый профиль"}</span><div class="mut">${esc(u.username?"@"+u.username:"")}</div><small class="mut">ID: ${u.id}</small></div></div>
   <div class="stats"><div class="stat">Завершено сделок<b>${s.completed}</b></div><div class="stat">Активных сейчас<b>${s.active}</b></div>
-  <div class="stat">Моя оценка<b>${own ? own.rating + " ★" : "—"}</b></div><div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div></div>
-  <h3>Последний отзыв</h3>${own?reviewCard(own):empty("Ваших отзывов пока нет")}
+  <div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div></div>
+  <h3>Последние отзывы</h3><div class="reviews-list">${SCREENSHOT_REVIEWS.slice(0,3).map(reviewCard).join("")}</div>
   ${dm()}<div class="group-label">УПРАВЛЕНИЕ</div>
   ${me.is_admin ? mi("go", "admin", "shield", "Админ-панель", "Управление платформой") : ""}
-  ${me.is_worker ? mi("go", "worker", "wallet", "Ворк-панель", "Баланс и постоянный отзыв") : ""}
+  ${me.is_worker ? mi("go", "worker", "wallet", "Ворк-панель", "Ваш баланс") : ""}
   ${mi("rvhome", "", "help", "Мой отзыв")}
   ${mi("tab", "reqs", "gem", "Мои реквизиты")}${mi("wdsheet", "", "out", "Вывод средств")}${mi("go", "deals", "bag", "История сделок")}
   ${mi("go", "ops", "list", "История операций")}<div class="group-label">СЕРВИС И ПОМОЩЬ</div>${mi("go", "support", "headset", "Поддержка")}${mi("language", "", "help", "Язык интерфейса", "Русский")}${mi("closetg", "", "out", "Закрыть мини-приложение")}`;
@@ -536,24 +567,15 @@ PG.worker = async () => {
   return `${bk}<h1>Ворк-панель</h1><div class="card"><b>Ваш баланс в приложении</b><p>${esc(balances)}</p><div class="hint">Показывает запись в базе. Денежный провайдер не подключён.</div></div>
   ${enabled ? `<div class="card"><h3>Начислить себе баланс</h3><label>Валюта</label>${chipsCur("wcur")}
     <label>Сумма</label><input id="wamount" inputmode="decimal" placeholder="Например, 100" autocomplete="off"><button class="btn" data-act="wcredit">Начислить</button><p class="mut">Начисление доступно только в режиме sandbox.</p></div>` : '<div class="card"><p>Начисления отключены.</p></div>'}
-  <div class="card"><h3>Ваш отзыв</h3><p class="mut">Отзыв публикуется от вашего Telegram-профиля и сохраняется после обновления страницы. Можно изменить или удалить его.</p>
-    <label>Оценка</label><div class="grid3" id="wrating" style="grid-template-columns:repeat(5,1fr)">${[1,2,3,4,5].map(n=>`<button class="opt ${n===(w.review?.rating||5)?"on":""}" data-act="seg" data-arg="${n}">${n}★</button>`).join("")}</div>
-    <label>Текст</label><textarea id="wtext" maxlength="300" placeholder="Ваш отзыв">${esc(w.review?.text||"")}</textarea>
-    <button class="btn" data-act="wreviews">Сохранить отзыв</button>${w.review?'<button class="btn d" data-act="wdelete">Удалить отзыв</button>':""}</div>`;
+  `;
 };
 A.wcredit = (_, b) => busy(b, async () => {
   await api("/worker/credit", {method:"POST", body:{currency:$("#wcur .on").dataset.arg, amount:$("#wamount").value}});
   await refreshMe(); toast("Баланс обновлён"); render();
 });
-A.wreviews = (_, b) => busy(b, async () => {
-  await api("/worker/reviews", {method:"POST", body:{rating:+$("#wrating .on").dataset.arg, text:$("#wtext").value}});
-  await refreshMe(); toast("Отзыв сохранён"); render();
-});
-A.wdelete = (_, b) => busy(b, async () => {
-  await api("/worker/reviews", {method:"DELETE"}); await refreshMe(); toast("Отзыв удалён"); render();
-});
 
-// admin / work panel
+// admin panel
+let adminUserQuery = "";
 PG.admin = async (tab = "stats") => {
   const tabs = `<div class="chips" style="margin:0 0 16px">${[["stats", "Обзор"], ["req", "Заявки"], ["users", "Пользователи"], ["deals", "Сделки"]]
     .map(([k, l]) => `<button class="chip ${k === tab ? "on" : ""}" data-act="atab" data-arg="${k}">${l}</button>`).join("")}</div>`;
@@ -567,11 +589,14 @@ PG.admin = async (tab = "stats") => {
       ${t.details ? `<div class="link">${esc(t.details)}</div>` : ""}<div class="row" style="justify-content:flex-start;margin-top:10px">
       <button class="btn sm" data-act="atx" data-arg="${t.id}:approve">Одобрить</button><button class="btn sm d" data-act="atx" data-arg="${t.id}:reject">Отклонить</button></div></div>`).join("") : empty("Нет открытых заявок");
   } else if (tab === "users") {
-    const u = await api("/admin/users");
-    body = u.map(x => `<div class="card"><div class="row"><b>${esc(x.username ? "@" + x.username : x.first_name)}</b><span class="bd ${x.blocked ? "red" : "green"}">${x.blocked ? "Заблокирован" : "Активен"}</span></div>
+    const u = await api("/admin/users?q="+encodeURIComponent(adminUserQuery));
+    body = `<div class="card"><label for="admin-user-search">Поиск по юзернейму</label>
+      <input id="admin-user-search" placeholder="@username" value="${esc(adminUserQuery)}" autocomplete="off">
+      <button class="btn sm" data-act="auserssearch">Найти</button></div>`+
+    (u.length ? u.map(x => `<div class="card"><div class="row"><b>${esc(x.username ? "@" + x.username : x.first_name)}</b><span class="bd ${x.blocked ? "red" : "green"}">${x.blocked ? "Заблокирован" : "Активен"}</span></div>
       <div class="mut" style="margin:4px 0 10px">ID ${x.id} · ${esc(Object.entries(x.balances).map(([c, v]) => fm(v, c)).join(", ") || "баланс 0")}</div>
       <div class="row" style="justify-content:flex-start"><button class="btn sm s" data-act="acredit" data-arg="${x.id}">Начислить</button>
-      <button class="btn sm ${x.blocked ? "" : "d"}" data-act="ablock" data-arg="${x.id}:${x.blocked ? 0 : 1}">${x.blocked ? "Разблокировать" : "Заблокировать"}</button></div></div>`).join("");
+      <button class="btn sm ${x.blocked ? "" : "d"}" data-act="ablock" data-arg="${x.id}:${x.blocked ? 0 : 1}">${x.blocked ? "Разблокировать" : "Заблокировать"}</button></div></div>`).join("") : empty("Участники не найдены"));
   } else {
     const d = await api("/admin/deals");
     body = d.length ? d.map(x => {
@@ -582,11 +607,13 @@ PG.admin = async (tab = "stats") => {
       <button class="btn sm d" data-act="astat" data-arg="${x.id}:cancelled">Отменить</button></div>`}</div>`;
     }).join("") : empty("Сделок нет");
   }
-  return `${bk}<h1>Ворк-панель</h1>${tabs}${body}`;
+  return `${bk}<h1>Админ-панель</h1>${tabs}${body}`;
 };
 const adm = (arg, path, body, msg) => async (_, b) => { await api(path, { method: "POST", body }); toast(msg); render(); };
 A.atx = (arg, b) => busy(b, async () => { const [id, a] = arg.split(":"); await api(`/admin/txs/${id}/${a}`, { method: "POST" }); toast("Готово"); render(); });
 A.ablock = (arg, b) => busy(b, async () => { const [id, f] = arg.split(":"); await api(`/admin/users/${id}/block`, { method: "POST", body: { blocked: f === "1" } }); toast("Готово"); render(); });
+A.auserssearch = () => { adminUserQuery=$("#admin-user-search").value.trim(); render(); };
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="admin-user-search"){e.preventDefault();A.auserssearch();}});
 A.astat = async (arg, b) => {
   const [id, s] = arg.split(":");
   if (!(await ask(s === "completed" ? "Завершить сделку и выплатить продавцу?" : "Отменить сделку (при оплате — вернуть деньги покупателю)?"))) return;
@@ -724,7 +751,10 @@ if(document.modelContext?.registerTool){
   }
   // Preview mode is explicit; an API outage NEVER switches to simulated money.
   DEMO = CFG.preview === true;
-  try { await refreshMe(); } catch (e) { view.innerHTML = empty(esc(e.message)); return; }
+  try {
+    if(P.get("worker")==="1") await api("/worker/activate",{method:"POST"});
+    await refreshMe();
+  } catch (e) { view.innerHTML = empty(esc(e.message)); return; }
   if(P.get("admin")==="1" && me.is_admin) page=["admin","stats"];
   else if(P.get("worker")==="1" && me.is_worker) page=["worker"];
   await render();

@@ -32,7 +32,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=None)
 LOG = logging.getLogger(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
-ASSETS = {"style.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.jpg"}
+ASSETS = {"style.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.mp4"}
 db.init()
 
 SC = db.SCALE
@@ -195,7 +195,7 @@ def secure(r):
         f"default-src 'self'; script-src {sp}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://ddejfvww7sqtk.cloudfront.net; object-src 'none'; base-uri 'self'; form-action 'self'"
     )
-    if request.path == "/" or request.path.startswith("/api"):
+    if request.path == "/" or request.path.startswith("/api") or request.path.startswith("/static/"):
         r.headers["Cache-Control"] = "no-store"
     return r
 
@@ -261,7 +261,7 @@ def register_webhook():
 
 @app.get("/static/<name>")
 def assets(name):
-    # only these two files are public; looked up in ./static first, then next to main.py
+    # Only allow listed public assets.
     if name in ASSETS:
         for folder in (os.path.join(BASE, "static"), BASE):
             if os.path.isfile(os.path.join(folder, name)):
@@ -293,14 +293,13 @@ def me():
         "SELECT COUNT(*) n FROM deals WHERE status NOT IN ('completed','cancelled') AND (seller_id=? OR buyer_id=?)",
         (uid, uid),
     )["n"]
-    my_review = db.row("SELECT rating,text,created,updated FROM work_reviews WHERE author_id=?", (uid,))
     return jsonify(
         user={"id": uid, "username": u["username"], "name": u["first_name"], "photo": u["photo"]},
-        is_admin=g.is_admin, is_worker=g.is_worker, balances=bal, my_review=my_review,
+        is_admin=g.is_admin, is_worker=g.is_worker, balances=bal,
         support=config.SUPPORT, demo=config.DEV_MODE, payment_mode=config.PAYMENT_MODE, auth_verified=not config.DEV_MODE,
         stats={
             "completed": sum(r["n"] for r in done), "active": active,
-            "rating": my_review["rating"] if my_review else None, "reviews": 1 if my_review else 0,
+            "rating": None, "reviews": 0,
             "turnover": {r["currency"]: fmt(r["s"]) for r in done},
         },
     )
@@ -311,27 +310,26 @@ def me():
 def home():
     uid = g.user["id"]
     ds = db.rows("SELECT * FROM deals WHERE seller_id=? OR buyer_id=? ORDER BY created DESC LIMIT 5", (uid, uid))
-    rv = db.rows(
-        "SELECT r.rating,r.text,r.updated AS created,u.username,u.first_name,'work' AS kind "
-        "FROM work_reviews r JOIN users u ON u.id=r.author_id ORDER BY r.updated DESC LIMIT 15"
-    )
-    return jsonify(
-        deals=[deal_view(d, uid) for d in ds],
-        reviews=[{"rating": r["rating"], "text": r["text"], "created": r["created"], "kind": r["kind"],
-                  "name": "@" + r["username"] if r["username"] else r["first_name"] or "user"} for r in rv],
-    )
+    return jsonify(deals=[deal_view(d, uid) for d in ds], reviews=[])
 
 
 @app.route("/api/reviews/mine", methods=["GET", "POST"])
 @auth()
 def site_review():
-    uid = g.user["id"]
     if request.method == "GET":
-        return jsonify(db.row("SELECT rating,text,created,updated FROM work_reviews WHERE author_id=?", (uid,)))
-    return err("Постоянный отзыв можно оставить в ворк-панели", 403)
+        return jsonify(None)
+    return err("Неизвестная ошибка, попробуйте позже", 503)
 
 
 # ---------------------------------------------------------------- worker sandbox
+@app.post("/api/worker/activate")
+@auth()
+def activate_worker():
+    # The /work button opens ?worker=1; activation binds access to this authenticated user.
+    db.grant_worker(g.user["id"])
+    return jsonify(ok=True)
+
+
 @app.get("/api/worker")
 @auth(worker=True)
 def worker_panel():
@@ -339,8 +337,7 @@ def worker_panel():
     balances = {r["currency"]: fmt(r["amount"]) for r in db.rows(
         "SELECT currency,amount FROM balances WHERE user_id=? AND amount>0", (uid,)
     )}
-    review = db.row("SELECT rating,text,created,updated FROM work_reviews WHERE author_id=?", (uid,))
-    return jsonify(payment_mode=config.PAYMENT_MODE, balances=balances, review=review)
+    return jsonify(payment_mode=config.PAYMENT_MODE, balances=balances)
 
 
 @app.post("/api/worker/credit")
@@ -366,27 +363,13 @@ def worker_credit():
 @app.post("/api/worker/reviews")
 @auth(worker=True)
 def worker_reviews():
-    j = request.get_json(silent=True) or {}
-    rating = j.get("rating")
-    body = clean(j.get("text"), 300)
-    if type(rating) is not int or not 1 <= rating <= 5 or not body:
-        return err("Укажите оценку 1–5 и текст отзыва")
-    with db.tx() as c:
-        now = int(time.time())
-        c.execute("INSERT INTO work_reviews(author_id,rating,text,created,updated) VALUES(?,?,?,?,?) "
-                  "ON CONFLICT(author_id) DO UPDATE SET rating=excluded.rating,text=excluded.text,updated=excluded.updated",
-                  (g.user["id"], rating, body, now, now))
-    return jsonify(ok=True)
+    return err("Неизвестная ошибка, попробуйте позже", 503)
 
 
 @app.delete("/api/worker/reviews")
 @auth(worker=True)
 def delete_worker_review():
-    with db.tx() as c:
-        result = c.execute("DELETE FROM work_reviews WHERE author_id=?", (g.user["id"],))
-        if result.rowcount != 1:
-            return err("Отзыв не найден", 404)
-    return jsonify(ok=True)
+    return err("Неизвестная ошибка, попробуйте позже", 503)
 
 
 # ---------------------------------------------------------------- deals
@@ -529,16 +512,10 @@ def deal_act(did, act):
 @auth()
 def review(did):
     did, uid = did.upper(), g.user["id"]
-    j = request.get_json(silent=True) or {}
     d = ID_RE.match(did) and db.row("SELECT * FROM deals WHERE id=?", (did,))
-    if not d or d["status"] != "completed" or uid not in (d["seller_id"], d["buyer_id"]):
-        return err("Отзыв недоступен", 403)
-    rating = j.get("rating")
-    if not isinstance(rating, int) or isinstance(rating, bool) or not 1 <= rating <= 5:
-        return err("Поставьте оценку от 1 до 5")
-    text = clean(j.get("text"), 300)
-    return jsonify(ok=True, review={"rating": rating, "text": text, "created": int(time.time()),
-                                    "kind": "deal_preview", "name": pub(uid)["name"], "deal_id": did})
+    if not d or uid not in (d["seller_id"], d["buyer_id"]):
+        return err("Сделка не найдена", 404)
+    return err("Неизвестная ошибка, попробуйте позже", 503)
 
 
 # ---------------------------------------------------------------- requisites & balance
@@ -624,7 +601,12 @@ def withdraw():
 @app.get("/api/admin/users")
 @auth(admin=True)
 def a_users():
-    us = db.rows("SELECT id,username,first_name,blocked,created FROM users ORDER BY created DESC")
+    q = request.args.get("q", "").strip().lstrip("@").lower()[:64]
+    us = db.rows(
+        "SELECT id,username,first_name,blocked,created FROM users "
+        "WHERE (?='' OR instr(lower(coalesce(username,'')),?)>0) ORDER BY created DESC LIMIT 500",
+        (q, q),
+    )
     bal = {}
     for r in db.rows("SELECT user_id,currency,amount FROM balances WHERE amount>0"):
         bal.setdefault(r["user_id"], {})[r["currency"]] = fmt(r["amount"])

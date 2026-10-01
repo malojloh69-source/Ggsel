@@ -58,8 +58,8 @@ def handle(update):
             "inline_keyboard": [[{"text": "Открыть админ-панель", "web_app": {"url": config.PUBLIC_BASE_URL + "/?admin=1"}}]]
         }})
         return
-    telegram("sendPhoto", {
-        "chat_id": chat["id"], "photo": config.PUBLIC_BASE_URL + "/static/welcome.jpg",
+    telegram("sendVideo", {
+        "chat_id": chat["id"], "video": config.PUBLIC_BASE_URL + "/static/welcome.mp4",
         "caption": welcome_text(), "parse_mode": "HTML",
         "reply_markup": {"inline_keyboard": [[{
             "text": "Open GG SELL", "style": "success", "web_app": {"url": config.PUBLIC_BASE_URL}
