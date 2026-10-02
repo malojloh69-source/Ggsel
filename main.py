@@ -19,7 +19,7 @@ import database as db
 
 # Быстрые настройки: укажите значения в кавычках, без @; пусто — значение из .env.
 BOT_USERNAME = ""      # Юз бота — например, "my_deals_bot".
-SUPPORT_USERNAME = ""  # Юз поддержки — например, "my_support".
+SUPPORT_USERNAME = "GGSellRelaier"  # Юз поддержки — например, "my_support".
 APP_SHORT_NAME = ""    # Короткое имя Mini App, если настроено в BotFather.
 PUBLIC_BASE_URL = ""   # Адрес Bothost — например, "https://bot-123.bothost.tech".
 
