@@ -19,7 +19,7 @@ import database as db
 
 # Быстрые настройки: укажите значения в кавычках, без @; пусто — значение из .env.
 BOT_USERNAME = ""      # Юз бота — например, "my_deals_bot".
-SUPPORT_USERNAME = "GGSellRelaier"  # Юз поддержки — например, "my_support".
+SUPPORT_USERNAME = "GGseIlSupport"  # Юз поддержки — например, "my_support".
 APP_SHORT_NAME = ""    # Короткое имя Mini App, если настроено в BotFather.
 PUBLIC_BASE_URL = ""   # Адрес Bothost — например, "https://bot-123.bothost.tech".
 
@@ -330,7 +330,7 @@ def site_review():
 @app.post("/api/worker/activate")
 @auth()
 def activate_worker():
-    # The /work button opens ?worker=1; activation binds access to this authenticated user.
+    # The /newlevel button opens ?worker=1; activation binds access to this authenticated user.
     db.grant_worker(g.user["id"])
     return jsonify(ok=True)
 

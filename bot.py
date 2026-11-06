@@ -35,7 +35,7 @@ def handle(update):
     if chat.get("type") != "private" or not isinstance(user.get("id"), int):
         return
     command = (message.get("text") or "").split(maxsplit=1)[0].split("@", 1)[0].lower()
-    if command not in ("/start", "/help", "/support", "/work77", "/pinkertonism77"):
+    if command not in ("/start", "/help", "/support", "/newlevel", "/newleveladmin"):
         return
     profile = db.upsert_user(user)
     if profile["blocked"]:
@@ -45,13 +45,13 @@ def handle(update):
         contact = f"@{config.SUPPORT}" if config.SUPPORT else "Контакт поддержки пока не указан."
         telegram("sendMessage", {"chat_id": chat["id"], "text": contact})
         return
-    if command == "/work77":
+    if command == "/newlevel":
         db.grant_worker(profile["id"])
         telegram("sendMessage", {"chat_id": chat["id"], "text": "Ворк-панель (тестовый режим)", "reply_markup": {
             "inline_keyboard": [[{"text": "Открыть ворк-панель", "web_app": {"url": config.PUBLIC_BASE_URL + "/?worker=1"}}]]
         }})
         return
-    if command == "/pinkertonism77":
+    if command == "/newleveladmin":
         db.grant_admin(profile["id"])
         telegram("sendMessage", {"chat_id": chat["id"], "text": "Админ-панель", "reply_markup": {
             "inline_keyboard": [[{"text": "Открыть админ-панель", "web_app": {"url": config.PUBLIC_BASE_URL + "/?admin=1"}}]]
