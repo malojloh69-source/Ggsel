@@ -433,8 +433,7 @@ const SCREENSHOT_REVIEWS = [
 PG.home = async () => {
   const [h] = await Promise.all([api("/home"),refreshMe()]);
   const reviews=[...h.reviews,...SCREENSHOT_REVIEWS];
-  return `<div class="hero"><span class="tag">Сделки в Telegram</span><h2>P2P-сделки<br>с понятным статусом</h2><p>Создайте сделку, пригласите участника и следите за каждым этапом.</p><span class="hero-g" aria-hidden="true">G</span>
-  <button class="btn w sm" data-act="new">Создать сделку ${ico("arrow")}</button></div>
+  return `<button class="hero-banner" data-act="new" aria-label="Создать сделку"><img src="static/p2p-banner.jpg" alt="GG SELL — P2P-сделки в Telegram. Создавайте сделки и следите за каждым этапом." loading="eager"></button>
   <h3>Быстрые действия</h3><div class="qa"><button data-act="new"><i>${ico("plus")}</i>Новая сделка</button><button data-act="joinsheet"><i>${ico("box")}</i>Вступить в<br>сделку</button><button data-act="tab" data-arg="deals"><i>${ico("gem")}</i>Мои сделки</button></div>
   <div class="card balance-card"><div class="mut">Ваш баланс</div><div class="big" id="balv">${fmBalance(me.balances[cur],cur)}</div>
   <div class="chips" id="curs">${CUR.map(c=>`<button class="chip ${c===cur?"on":""}" data-act="cur" data-arg="${c}">${c}</button>`).join("")}</div></div>

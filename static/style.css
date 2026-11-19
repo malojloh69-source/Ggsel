@@ -229,3 +229,8 @@ input, textarea { transition: border-color .24s ease, box-shadow .24s ease, back
   .reveal-pending { opacity: 1; transform: none; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Banner in place of the home hero card */
+.hero-banner { display: block; width: 100%; padding: 0; border: 0; border-radius: 25px; background: transparent; overflow: hidden; cursor: pointer; line-height: 0; box-shadow: 0 13px 24px rgba(22, 27, 38, .15); }
+.hero-banner img { display: block; width: 100%; height: auto; }
+.hero-banner:focus-visible { outline: 3px solid var(--g); outline-offset: 3px; }
