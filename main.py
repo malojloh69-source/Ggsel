@@ -269,6 +269,14 @@ def assets(name):
     return err("Не найдено", 404)
 
 
+@app.get("/static/assets/<name>")
+def banner_asset(name):
+    # Explicitly allow the public homepage banner.
+    if name != "ggsell-p2p-banner.webp":
+        return err("Не найдено", 404)
+    return send_from_directory(os.path.join(BASE, "static", "assets"), name, mimetype="image/webp")
+
+
 @app.get("/static/gifts/<name>")
 def gift_animation(name):
     if not re.fullmatch(r"\d{2}\.json", name):
