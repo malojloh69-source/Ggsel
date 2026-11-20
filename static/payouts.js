@@ -5,7 +5,7 @@ const {PG,A,api,go,back,render,refreshMe,getMe,getPage,getCurrency,esc,ico,busy,
 const I=window.GgselI18n,t=(...args)=>I.t(...args);
 const money=(amount,currency)=>`${Number(amount||0).toLocaleString(I.locale,{maximumFractionDigits:8})} ${{RUB:'₽',UAH:'₴',KZT:'₸',UZS:'сум',STARS:'Stars'}[currency]||currency}`;
 const balance=c=>getMe()?.balances[c]||'0';
-const video=(name,extra='')=>`<video class="anim ${extra}" autoplay loop muted playsinline preload="metadata" aria-hidden="true" src="/static/assets/animations/${name}.webm"></video>`;
+const video=(name,extra='')=>`<video class="anim ${extra}" autoplay loop muted playsinline preload="metadata" aria-hidden="true" src="/static/assets/animations/${name}.${name==='stars'?'mp4':'webm'}"></video>`;
 const cryptoIcon=c=>`<img class="crypto-icon" src="/static/assets/crypto/${c.toLowerCase()}.${c==='TON'?'png':'svg'}" alt="${c}" width="47" height="47">`;
 let banks=[],recipients=[],bankCurrency='ALL',bankSearch='',selectedBank=null,crypto='TON',chain='TON',reviewPayload=null,requestData=null;
 let bankLoad=null;

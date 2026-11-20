@@ -298,7 +298,7 @@ def payout_asset(category, name):
     public = {
         "banks": {os.path.basename(b["icon"]) for b in payouts.BANKS},
         "crypto": {"ton.png", "usdt.svg", "btc.svg"},
-        "animations": {f"{n}.webm" for n in ("purse", "card", "wallet", "stars", "ru", "en", "uk", "warning", "success")},
+        "animations": {f"{n}.webm" for n in ("purse", "card", "wallet", "stars", "ru", "en", "uk", "warning", "success")} | {"stars.mp4"},
     }
     if name not in public.get(category, set()):
         return err("Не найдено", 404)
