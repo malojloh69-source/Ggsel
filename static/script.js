@@ -519,13 +519,13 @@ PG.profile = async () => {
   const mi = (a, arg, ic, t, sm = "") => `<button class="mi" data-act="${a}" data-arg="${arg}"><i>${ico(ic)}</i><div>${t}${sm ? `<small>${sm}</small>` : ""}</div>${ico("chev")}</button>`;
   return `<div class="card profile-card"><div class="av lg">${u.photo?`<img src="${esc(u.photo)}" alt="Аватар профиля">`:esc((u.name||name).replace("@","")[0].toUpperCase())}</div><div><h1 data-user-text>${esc(u.name||name)}</h1><span class="bd green">${me.auth_verified ? "Вход через Telegram" : "Профиль"}</span><div class="mut">${esc(u.username?"@"+u.username:"")}</div><small class="mut">ID: ${u.id}</small></div></div>
   <div class="stats"><div class="stat">Сделок<b>${s.test_completed}</b></div><div class="stat">Активных сейчас<b>${s.active}</b></div>
-  <div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div><div class="stat">${testRating ? "Рейтинг" : "Рейтинг"}<b>${rating === null || rating === undefined ? "—" : `${Number(rating).toFixed(1)} ★`}</b></div>
+  <div class="stat">Оборот<b>${esc(to)}</b></div><div class="stat">${testRating ? "Рейтинг" : "Рейтинг"}<b>${rating === null || rating === undefined ? "—" : `${Number(rating).toFixed(1)} ★`}</b></div>
   </div>
   <div class="group-label">УПРАВЛЕНИЕ</div>
   ${me.is_admin ? mi("go", "admin", "shield", "Админ-панель", "Управление платформой") : ""}
   ${me.is_worker ? mi("go", "worker", "wallet", "Ворк-панель", "Ваш баланс") : ""}
   ${mi("tab", "reqs", "gem", "Мои реквизиты")}${mi("wdsheet", "", "out", "Вывод средств")}${mi("go", "deals", "bag", "История сделок")}
-  ${mi("go", "ops", "list", "История операций")}<div class="group-label">СЕРВИС И ПОМОЩЬ</div>${mi("go", "support", "headset", "Поддержка")}${mi("language", "", "help", "Язык интерфейса", window.GgselI18n.lang === "en" ? "English" : "Русский")}${mi("closetg", "", "out", "Закрыть мини-приложение")}`;
+  ${mi("go", "ops", "list", "История операций")}<div class="group-label">СЕРВИС И ПОМОЩЬ</div>${mi("go", "support", "headset", "Поддержка")}${mi("language", "", "help", "Язык интерфейса", window.GgselI18n.languageName)}${mi("closetg", "", "out", "Закрыть мини-приложение")}`;
 };
 PG.support = async () => `${bk}<h1>Поддержка</h1><div class="card"><p>Возник вопрос по сделке или выводу средств? Напишите в поддержку и укажите ID сделки.</p>
   ${me.support ? `<button class="btn" data-act="support">${ico("send")}Написать в поддержку</button>` : `<p class="mut">Контакт поддержки пока не указан владельцем приложения.</p>`}</div>`;

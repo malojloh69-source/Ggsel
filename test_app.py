@@ -118,6 +118,21 @@ class DealTests(unittest.TestCase):
   self.assertEqual(result.json['error'],'Неизвестная ошибка, попробуйте позже')
   self.assertEqual(db.row('SELECT COUNT(*) n FROM reviews')['n'],0)
   self.assertEqual(self.req('/api/home',2).json['reviews'],[])
+ def test_home_shows_saved_user_reviews_without_worker_fixtures(self):
+  d=self.paid();self.act(d,'confirm',2)
+  self.req('/api/me',3)
+  with db.tx() as c:
+   c.execute('INSERT INTO reviews(deal_id,author_id,target_id,rating,text,created) VALUES(?,?,?,?,?,?)',(d,2,1,5,'Сохранённый отзыв',100))
+   c.execute('INSERT INTO site_reviews VALUES(?,?,?,?,?)',(3,4,'Отзыв пользователя',101,101))
+   c.execute('INSERT INTO work_reviews VALUES(?,?,?,?,?)',(1,5,'Сохранённый текст',102,102))
+   c.execute('INSERT INTO worker_reviews(worker_id,rating,text,created) VALUES(?,?,?,?)',(1,5,'Добавленный работником текст',103))
+  reviews=self.req('/api/home',2).json['reviews']
+  self.assertEqual([r['text'] for r in reviews],['Сохранённый текст','Отзыв пользователя','Сохранённый отзыв'])
+  self.assertEqual(reviews[-1]['name'],'@dev2')
+  with db.tx() as c:c.execute("UPDATE deals SET status='cancelled' WHERE id=?",(d,))
+  self.assertNotIn('Сохранённый отзыв',[r['text'] for r in self.req('/api/home',2).json['reviews']])
+  self.req('/api/admin/users/3/block',1,'POST',{'blocked':True})
+  self.assertEqual([r['text'] for r in self.req('/api/home',2).json['reviews']],['Сохранённый текст'])
  def test_bot_start_has_web_app_and_telegram_profile(self):
   old_url,old_support=config.PUBLIC_BASE_URL,config.SUPPORT
   config.PUBLIC_BASE_URL='https://example.test/app'

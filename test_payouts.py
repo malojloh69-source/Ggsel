@@ -123,7 +123,7 @@ class PayoutTests(unittest.TestCase):
         for asset in ('ton.png', 'btc.svg', 'usdt.svg'):
             with self.c.get('/static/assets/crypto/' + asset) as response:
                 self.assertEqual(response.status_code, 200)
-        for asset in ('purse', 'card', 'wallet', 'stars', 'ru', 'en', 'warning', 'success'):
+        for asset in ('purse', 'card', 'wallet', 'stars', 'ru', 'en', 'uk', 'warning', 'success'):
             with self.c.get('/static/assets/animations/' + asset + '.webm') as response:
                 self.assertEqual(response.status_code, 200)
         for path in ('/static/assets/crypto/main.py', '/static/assets/banks/../../main.py', '/static/assets/unknown/btc.svg'):

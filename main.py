@@ -34,7 +34,7 @@ app = Flask(__name__, static_folder=None)
 LOG = logging.getLogger(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
 ASSETS = {"style.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.mp4",
-          "payouts.js", "payouts.css", "i18n.js", "banks.json"}
+          "payouts.js", "payouts.css", "i18n.js", "i18n-uk.js", "banks.json"}
 db.init()
 
 SC = db.SCALE
@@ -292,7 +292,7 @@ def payout_asset(category, name):
     public = {
         "banks": {os.path.basename(b["icon"]) for b in payouts.BANKS},
         "crypto": {"ton.png", "usdt.svg", "btc.svg"},
-        "animations": {f"{n}.webm" for n in ("purse", "card", "wallet", "stars", "ru", "en", "warning", "success")},
+        "animations": {f"{n}.webm" for n in ("purse", "card", "wallet", "stars", "ru", "en", "uk", "warning", "success")},
     }
     if name not in public.get(category, set()):
         return err("Не найдено", 404)
@@ -338,7 +338,21 @@ def me():
 def home():
     uid = g.user["id"]
     ds = db.rows("SELECT * FROM deals WHERE seller_id=? OR buyer_id=? ORDER BY created DESC LIMIT 5", (uid, uid))
-    return jsonify(deals=[deal_view(d, uid) for d in ds], reviews=[])
+    reviews = db.rows("""
+        SELECT r.rating,r.text,r.created,r.source,
+               CASE WHEN u.username IS NOT NULL AND u.username != '' THEN '@' || u.username
+                    ELSE coalesce(nullif(u.first_name,''),'Пользователь') END AS name
+        FROM (
+            SELECT r.author_id,r.rating,r.text,r.created,'deal' AS source
+            FROM reviews r JOIN deals d ON d.id=r.deal_id
+            WHERE d.status='completed' AND r.author_id IN (d.seller_id,d.buyer_id)
+            UNION ALL SELECT author_id,rating,text,created,'site' FROM site_reviews
+            UNION ALL SELECT author_id,rating,text,created,'work' FROM work_reviews
+        ) r JOIN users u ON u.id=r.author_id
+        WHERE u.blocked=0 AND r.rating BETWEEN 1 AND 5
+        ORDER BY r.created DESC LIMIT 100
+    """)
+    return jsonify(deals=[deal_view(d, uid) for d in ds], reviews=reviews)
 
 
 @app.route("/api/reviews/mine", methods=["GET", "POST"])
