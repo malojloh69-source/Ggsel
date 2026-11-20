@@ -204,7 +204,8 @@ textarea { min-height: 112px; }
 #nav { right: 8px; left: 8px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); width: calc(100% - 16px); max-width: 524px; min-height: 68px; padding: 5px; border: 1px solid #f2f3f5; border-radius: 36px; background: rgba(255,255,255,.98); box-shadow: 0 2px 24px #1717170d; }
 #nav > button { gap: 5px; min-height: 54px; padding: 6px 1px; border-radius: 28px; color: #717781; font-size: 11px; font-weight: 450; }
 #nav > button.on { color: var(--ink); background: var(--chip); }
-#nav .ic { width: 21px; height: 21px; }
+#nav .nav-icon { width: 22px; height: 22px; color: #444a53; stroke-width: 1.85; }
+#nav .on .nav-icon { color: var(--ink); --nav-icon-fill: #dce2ea; }
 #nav .fab { border-radius: 50%; background: #def6e4; color: #137730; box-shadow: none; }
 #nav .fab .ic { width: 26px; height: 26px; stroke-width: 2.1; }
 .sheet { border-radius: 24px 24px 0 0; padding-right: 20px; padding-left: 20px; }

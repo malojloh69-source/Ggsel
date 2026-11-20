@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="static/style.css?v=20261001">
 <link rel="stylesheet" href="static/payouts.css?v=20261120currency">
 <link rel="stylesheet" href="static/verification.css?v=20261120clean2">
-<link rel="stylesheet" href="static/ggsel-theme.css?v=20261120black-plus">
+<link rel="stylesheet" href="static/ggsel-theme.css?v=20261120nav">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -36,6 +36,23 @@
 <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
 <symbol id="i-out" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
 <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+<symbol id="nav-home" viewBox="0 0 24 24">
+  <path fill="var(--nav-icon-fill, none)" d="m3.75 10.5 7-6.25a1.88 1.88 0 0 1 2.5 0l7 6.25v7.75a2 2 0 0 1-2 2H5.75a2 2 0 0 1-2-2z"/>
+  <path d="M9.5 20.25v-5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v5"/>
+</symbol>
+<symbol id="nav-deals" viewBox="0 0 24 24">
+  <rect x="4.25" y="3.75" width="15.5" height="16.5" rx="3.25" fill="var(--nav-icon-fill, none)"/>
+  <path d="M8 8.5h8M8 12h3m1.75 3.5 1.5 1.5 2.75-2.75"/>
+</symbol>
+<symbol id="nav-withdraw" viewBox="0 0 24 24">
+  <path fill="var(--nav-icon-fill, none)" d="M13 6H6a2.5 2.5 0 0 0-2.5 2.5v9A2.5 2.5 0 0 0 6 20h11.5a2.5 2.5 0 0 0 2.5-2.5V13"/>
+  <path d="M7.5 15.5h3M14 11l6-6m-4.5 0H20v4.5"/>
+</symbol>
+<symbol id="nav-profile" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="8.75" fill="var(--nav-icon-fill, none)"/>
+  <circle cx="12" cy="9.25" r="2.5"/>
+  <path d="M6.4 18.6a6.05 6.05 0 0 1 11.2 0"/>
+</symbol>
 </defs></svg>
 
 <div id="app">
@@ -47,11 +64,11 @@
 </div>
 
 <nav id="nav" aria-label="Основная навигация">
-  <button data-act="tab" data-arg="home"><svg class="ic"><use href="#i-home"/></svg><span>Главная</span></button>
-  <button data-act="tab" data-arg="deals"><svg class="ic"><use href="#i-bag"/></svg><span>Сделки</span></button>
-  <button class="fab" data-act="new" aria-label="Новая сделка"><svg class="ic"><use href="#i-plus"/></svg></button>
-  <button data-act="tab" data-arg="reqs"><svg class="ic"><use href="#i-gem"/></svg><span>Реквизиты</span></button>
-  <button data-act="tab" data-arg="profile"><svg class="ic"><use href="#i-user"/></svg><span>Профиль</span></button>
+  <button data-act="tab" data-arg="home"><svg class="ic nav-icon" aria-hidden="true"><use href="#nav-home"/></svg><span>Главная</span></button>
+  <button data-act="tab" data-arg="deals"><svg class="ic nav-icon" aria-hidden="true"><use href="#nav-deals"/></svg><span>Сделки</span></button>
+  <button class="fab" data-act="new" aria-label="Новая сделка"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+  <button data-act="tab" data-arg="reqs"><svg class="ic nav-icon" aria-hidden="true"><use href="#nav-withdraw"/></svg><span>Вывод</span></button>
+  <button data-act="tab" data-arg="profile"><svg class="ic nav-icon" aria-hidden="true"><use href="#nav-profile"/></svg><span>Профиль</span></button>
 </nav>
 <div id="toast" role="status" aria-live="polite"></div>
 <script nonce="__NONCE__">window.APP_CONFIG=window.__PYTHON_CONFIG__||{preview:false,dev:false,paymentMode:"sandbox"};</script><script src="static/lottie-player.js" defer></script><script src="static/i18n-uk.js?v=20261120live-nft" defer></script><script src="static/i18n.js?v=20261120live-nft" defer></script><script src="static/payouts.js?v=20261120currency" defer></script><script src="static/verification.js?v=20261120currency" defer></script><script src="static/script.js?v=20261120live-nft" defer></script>
