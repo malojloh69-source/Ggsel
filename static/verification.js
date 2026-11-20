@@ -4,7 +4,6 @@ window.GgselVerification = function (ctx) {
 const {PG,A,api,go,render,refreshMe,getMe,getPage,esc,ico,busy,toast,closeSheet}=ctx;
 const I=window.GgselI18n;
 const S={
- note:['Сделки и баланс виртуальные. Для верификации не нужны деньги или подарки.','Deals and balances are virtual. Verification requires no money or gifts.','Угоди й баланс віртуальні. Для верифікації не потрібні гроші чи подарунки.'],
  virtualDeals:['Сделки','Deals','Угоди'],
  wait:['Ожидает подтверждения','Awaiting approval','Очікує підтвердження'],
  requirement:['Нужны две завершённые сделки, каждая от 1 000 ₽ в эквиваленте.','Complete two deals, each worth the equivalent of RUB 1,000 or more.','Потрібні дві завершені угоди, кожна від 1 000 ₽ в еквіваленті.'],
@@ -23,7 +22,7 @@ const S={
  disabled:['Верификация сейчас недоступна','Verification is currently unavailable','Верифікація зараз недоступна'],
 };
 const tr=key=>S[key][{ru:0,en:1,uk:2}[I.lang]];
-const note=()=>`<p class="mut" style="font-size:11px;line-height:1.4;margin:6px 0 12px">${tr('note')}</p>`;
+const note=()=>`<p class="mut" style="font-size:11px;line-height:1.4;margin:6px 0 12px">${({ru:'Виртуальные сделки',en:'Virtual deals',uk:'Віртуальні угоди'})[I.lang]||'Виртуальные сделки'}</p>`;
 const video=name=>`<video class="anim verification-animation" autoplay loop muted playsinline preload="metadata" aria-hidden="true" src="/static/assets/animations/${name}.webm"></video>`;
 const title=()=>`<h1>${I.t('verification')}</h1>`;
 const status=()=>getMe()?.verification;
