@@ -78,6 +78,10 @@ h3 a, .text-button { color: var(--g2); font-size: 15px; font-weight: 650; white-
 .balance-card { margin-top: 20px; padding: 19px 20px; }
 .balance-card > .mut { font-family: "Inter", Arial, sans-serif; font-weight: 500; font-size: 15px; }
 .big { margin: 5px 0; font-family: "Montserrat", "Inter", Arial, sans-serif; font-size: 38px; font-weight: 700; line-height: 1.1; letter-spacing: -.035em; font-variant-numeric: lining-nums proportional-nums; }
+#balv { display: flex; align-items: center; gap: 8px; }
+.balance-amount { min-width: 0; overflow-wrap: anywhere; }
+.balance-star { display: block; flex: 0 0 1.08em; width: 1.08em; height: 1.08em; }
+.balance-star > img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .topup-title { display: flex; align-items: center; gap: 10px; }
 .topup-title .ic { color: var(--g); }
 .chips { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }

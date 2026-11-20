@@ -23,7 +23,11 @@ const TABMAP = { home: "home", deals: "deals", deal: "deals", intro: "deals", ne
 
 const ico = n => `<svg class="ic"><use href="#i-${n}"/></svg>`;
 const fm = (v, c) => `${Number(v).toLocaleString(window.GgselI18n?.locale || "ru-RU", { maximumFractionDigits: 8 })} ${SYM[c] || c}`;
-const fmBalance = (v, c) => `${Number(v).toLocaleString(window.GgselI18n?.locale || "ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 8 })} ${SYM[c] || c}`;
+const fmBalanceNumber = v => Number(v).toLocaleString(window.GgselI18n?.locale || "ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+const fmBalance = (v, c) => `${fmBalanceNumber(v)} ${SYM[c] || c}`;
+const homeBalance = (v, c) => c === "STARS"
+  ? `<span class="balance-amount">${esc(fmBalanceNumber(v))}</span><picture class="balance-star"><source media="(prefers-reduced-motion: reduce)" srcset="/static/assets/animations/stars.png"><img src="/static/assets/animations/stars.webp" width="192" height="192" alt="Stars"></picture>`
+  : esc(fmBalance(v, c));
 const dt = t => new Date(t * 1000).toLocaleString(window.GgselI18n?.locale || "ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const sk = n => '<div class="sk"></div>'.repeat(n);
 const empty = t => `<div class="empty">${t}</div>`;
@@ -363,7 +367,7 @@ A.copy = v => copyText(v);
 A.ext = u => openTg(u);
 A.cur = c => {
   cur = c; lsSet("deal_currency", c); document.querySelectorAll("#curs .chip").forEach(x => x.classList.toggle("on", x.dataset.arg === c));
-  $("#balv").textContent = fmBalance(me.balances[c], c);
+  $("#balv").innerHTML = homeBalance(me.balances[c], c);
 };
 A.dfilter = f => { page = ["deals", f]; render(); };
 A.atab = t => { page = ["admin", t]; render(); };
@@ -388,7 +392,7 @@ PG.home = async () => {
   const reviews=h.reviews;
   return `<button class="hero-banner" data-act="new" aria-label="Создать сделку"><img src="/static/assets/ggsell-p2p-banner.webp" alt="GG SELL — P2P-сделки в Telegram. Создавайте сделки и следите за каждым этапом." loading="eager"></button>
   <h3>Быстрые действия</h3><div class="qa"><button data-act="new"><i>${ico("plus")}</i>Новая сделка</button><button data-act="joinsheet"><i>${ico("box")}</i>Вступить в<br>сделку</button><button data-act="tab" data-arg="deals"><i>${ico("gem")}</i>Мои сделки</button></div>
-  <div class="card balance-card"><div class="mut">Ваш баланс</div><div class="big" id="balv">${fmBalance(me.balances[cur],cur)}</div>
+  <div class="card balance-card"><div class="mut">Ваш баланс</div><div class="big" id="balv">${homeBalance(me.balances[cur],cur)}</div>
   <div class="chips" id="curs">${CUR.map(c=>`<button class="chip ${c===cur?"on":""}" data-act="cur" data-arg="${c}">${c}</button>`).join("")}</div></div>
   <h3>Последние сделки<button class="text-button" data-act="tab" data-arg="deals">Все</button></h3><div id="recent-deals">${h.deals.length?`<div class="list">${h.deals.map(dealCard).join("")}</div>`:empty(ico("bag")+"<p>У вас пока нет сделок</p>")}</div>
   <h3>Каталог подарков<span class="live" id="live-state">● LIVE</span></h3><div id="live-feed">${catalogCards()}</div>

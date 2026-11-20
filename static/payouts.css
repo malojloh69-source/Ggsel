@@ -5,3 +5,8 @@
 @media(prefers-reduced-motion:reduce){.loading-dots i{animation:none}}
 
 .language-options{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.language-option{min-width:0;min-height:148px;padding:15px 6px}.language-option.selected{padding:14px 5px}.language-option .anim{width:68px;height:73px}.language-option b{font-size:14px}.profile-card+.stats{grid-auto-rows:1fr}.profile-card+.stats .stat{min-height:92px}.profile-card+.stats .stat b{font-size:24px;line-height:1.15}
+
+/* Transparent Stars animation, sized for each existing payout slot. */
+.stars-anim { flex-shrink: 0; }
+.stars-anim > img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.method-image .stars-anim { width: 64px; height: 64px; }

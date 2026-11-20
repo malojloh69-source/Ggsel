@@ -298,11 +298,12 @@ def payout_asset(category, name):
     public = {
         "banks": {os.path.basename(b["icon"]) for b in payouts.BANKS},
         "crypto": {"ton.png", "usdt.svg", "btc.svg"},
-        "animations": {f"{n}.webm" for n in ("purse", "card", "wallet", "stars", "ru", "en", "uk", "warning", "success")} | {"stars.mp4"},
+        "animations": {f"{n}.webm" for n in ("purse", "card", "wallet", "stars", "ru", "en", "uk", "warning", "success")} | {"stars.mp4", "stars.webp", "stars.png"},
     }
     if name not in public.get(category, set()):
         return err("Не найдено", 404)
-    return send_from_directory(os.path.join(BASE, "static", "assets", category), name)
+    mimetype = {"stars.webp": "image/webp", "stars.png": "image/png"}.get(name)
+    return send_from_directory(os.path.join(BASE, "static", "assets", category), name, mimetype=mimetype)
 
 
 # ---------------------------------------------------------------- user
