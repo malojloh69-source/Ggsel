@@ -434,7 +434,7 @@ def worker_credit():
     try:
         with db.tx() as c:
             db.move(c, g.user["id"], cur, amt)
-            db.log(c, g.user["id"], "worker_credit", cur, amt, "done", "Тестовые средства. Не являются деньгами.")
+            db.log(c, g.user["id"], "worker_credit", cur, amt, "done", "Виртуальное начисление")
     except ValueError as exc:
         return err(str(exc))
     return jsonify(ok=True)
@@ -875,7 +875,7 @@ def sandbox_fund():
     try:
         with db.tx() as c:
             db.move(c, g.user["id"], cur, amt)
-            db.log(c, g.user["id"], "sandbox_credit", cur, amt, "done", "Тестовые средства. Не являются деньгами.")
+            db.log(c, g.user["id"], "sandbox_credit", cur, amt, "done", "Виртуальное начисление")
     except ValueError as e:
         return err(str(e))
     return jsonify(ok=True, payment_mode="sandbox")
