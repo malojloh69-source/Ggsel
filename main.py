@@ -585,7 +585,6 @@ def deal_act(did, act):
             d = dict(c.execute("SELECT * FROM deals WHERE id=?", (did,)).fetchone())
     except ValueError as e:
         return err(str(e))
-    verification.notify_deal(d)
     return jsonify(deal_view(d, uid))
 
 
@@ -845,7 +844,6 @@ def a_status(did):
             c.execute("UPDATE deals SET status=?, updated=? WHERE id=?", (new, int(time.time()), d["id"]))
     except ValueError as e:
         return err(str(e))
-    verification.notify_deal(dict(d) | {"status": new})
     return jsonify(ok=True)
 
 
