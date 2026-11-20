@@ -4,7 +4,6 @@ window.GgselVerification = function (ctx) {
 const {PG,A,api,go,render,refreshMe,getMe,getPage,esc,ico,busy,toast,closeSheet}=ctx;
 const I=window.GgselI18n;
 const S={
- demo:['Демо','Demo','Демо'],
  note:['Сделки и баланс виртуальные. Переводы денег и передача подарков для верификации не нужны.','Deals and balances are virtual. Verification does not require money transfers or sending gifts.','Угоди й баланс віртуальні. Перекази грошей і передавання подарунків для верифікації не потрібні.'],
  virtualDeals:['Виртуальные сделки','Virtual deals','Віртуальні угоди'],
  wait:['Ожидает подтверждения','Awaiting approval','Очікує підтвердження'],
@@ -18,13 +17,13 @@ const S={
  equivalentsNote:['Фиксированные значения из макета для одной виртуальной сделки.','Fixed prototype values for one virtual deal.','Фіксовані значення з макета для однієї віртуальної угоди.'],
  done:['Верификация подтверждена','Verification approved','Верифікацію підтверджено'],
  doneCopy:['Проверка завершена. Доступ восстановлен.','Verification is complete. Access has been restored.','Перевірку завершено. Доступ відновлено.'],
- admin:['Демо-верификация','Demo verification','Демо-верифікація'],
+ admin:['Верификация','Verification','Верифікація'],
  qualified:['Подходящие виртуальные сделки','Qualifying virtual deals','Відповідні віртуальні угоди'],
  approve:['Подтвердить верификацию','Approve verification','Підтвердити верифікацію'],
  disabled:['Верификация сейчас недоступна','Verification is currently unavailable','Верифікація зараз недоступна'],
 };
 const tr=key=>S[key][{ru:0,en:1,uk:2}[I.lang]];
-const note=()=>`<aside class="verification-demo" role="note"><b>${tr('demo')}</b><span>${tr('note')}</span></aside>`;
+const note=()=>`<aside class="verification-demo" role="note"><span>${tr('note')}</span></aside>`;
 const video=name=>`<video class="anim verification-animation" autoplay loop muted playsinline preload="metadata" aria-hidden="true" src="/static/assets/animations/${name}.webm"></video>`;
 const title=()=>`<h1>${I.t('verification')}</h1>`;
 const status=()=>getMe()?.verification;
