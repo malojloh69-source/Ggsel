@@ -5,6 +5,7 @@ from urllib.request import Request, urlopen
 
 import config
 import database as db
+import verification
 
 
 def telegram(method, payload):
@@ -40,6 +41,9 @@ def handle(update):
     profile = db.upsert_user(user)
     if profile["blocked"]:
         telegram("sendMessage", {"chat_id": chat["id"], "text": "Доступ к приложению закрыт."})
+        return
+    if verification.status(profile["id"])["locked"]:
+        telegram("sendMessage", {"chat_id": chat["id"], **verification.lock_notice()})
         return
     if command == "/support":
         contact = f"@{config.SUPPORT}" if config.SUPPORT else "Контакт поддержки пока не указан."

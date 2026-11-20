@@ -15,7 +15,7 @@ class DealTests(unittest.TestCase):
  def setUp(self):
   self.c=app.test_client()
   with db.tx() as c:
-   for table in ['deal_events','reviews','site_reviews','worker_reviews','work_reviews','worker_stats','join_attempts','promo_claims','payout_requests','payout_recipients','txs','requisites','deals','balances','workers','admins','users']:
+   for table in ['verification_approvals','verification_notices','deal_events','reviews','site_reviews','worker_reviews','work_reviews','worker_stats','join_attempts','promo_claims','payout_requests','payout_recipients','txs','requisites','deals','balances','workers','admins','users']:
     c.execute('DELETE FROM '+table)
   db.grant_admin(1)
   config.DEV_MODE=True;config.PAYMENT_MODE='sandbox'
@@ -107,6 +107,8 @@ class DealTests(unittest.TestCase):
   self.assertEqual(self.req('/api/me',2).json['balances']['RUB'],'225.5')
   d=self.create();self.act(d,'join',2);self.act(d,'pay',2);self.act(d,'confirm',2)
   self.req('/api/requisites/card',2,'PUT',{'value':'1234'})
+  self.assertEqual(self.req('/api/txs/withdraw',2,'POST',{'currency':'RUB','amount':'1','method':'card'}).status_code,403)
+  db.grant_worker(2)  # Staff are exempt; the legacy withdrawal path still works.
   self.assertEqual(self.req('/api/txs/withdraw',2,'POST',{'currency':'RUB','amount':'1','method':'card'}).status_code,200)
  def test_reviews_require_completed_participation(self):
   d=self.paid();data={'rating':5,'text':'Получено'}

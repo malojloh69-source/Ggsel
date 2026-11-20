@@ -36,6 +36,7 @@ const view = $("#view");
 let me = null, cur = localStorage.getItem("deal_currency") || "RUB", page = ["home"], stack = [], tok = 0, sh = null;
 const A = {}, PG = {};
 let upgrade = null;
+let verificationUI = null;
 
 // ------------------------------------------------------------ core helpers
 let DEMO = CFG.preview === true;
@@ -47,7 +48,11 @@ async function api(path, o = {}) {
     body: o.body ? JSON.stringify(o.body) : undefined,
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(window.GgselI18n.text(j.error || "Ошибка " + r.status));
+  if (!r.ok) {
+    const error = new Error(window.GgselI18n.text(j.error || "Ошибка " + r.status));
+    error.verification = j.verification;
+    throw error;
+  }
   return j;
 }
 // ------------------------------------------------------------ demo mode: backend in the browser (only when no server is reachable)
@@ -258,7 +263,7 @@ function copyText(v) {
 }
 async function busy(b, fn) {
   b.classList.add("load"); b.disabled = true;
-  try { await fn(); } catch (x) { toast(x.message, 1); haptic("error"); }
+  try { await fn(); } catch (x) { if (!verificationUI?.handleError(x)) { toast(x.message, 1); haptic("error"); } }
   finally { b.classList.remove("load"); b.disabled = false; }
 }
 function sheet(html) {
@@ -305,6 +310,7 @@ async function render(keepScroll=false) {
   const y=window.scrollY;
   const giftScroll=keepScroll ? $("#live-feed .gift-track")?.scrollLeft : 0;
   const t = ++tok, [n, a] = page;
+  if (verificationUI?.guard(n)) return;
   if (n !== "intro") clearInterval(introTimer);
   document.querySelectorAll("#nav>button[data-arg]").forEach(b => b.classList.toggle("on", b.dataset.arg === (n.startsWith("payout-")?"reqs":TABMAP[n])));
   if (tg && tg.BackButton) stack.length ? tg.BackButton.show() : tg.BackButton.hide();
@@ -315,11 +321,12 @@ async function render(keepScroll=false) {
     view.innerHTML = h;
   } catch (e) {
     if (t !== tok) return;
+    if (verificationUI?.handleError(e)) return;
     view.innerHTML = `<div class="empty">${esc(e.message)}<br><button class="btn s sm" data-act="retry" style="margin:14px auto 0">Повторить</button></div>`;
   }
   view.classList.remove("in"); if (!keepScroll) { void view.offsetWidth; view.classList.add("in"); } window.scrollTo({top: keepScroll ? y : 0, behavior: "instant"});
   animateEntrance(keepScroll);
-  labelInputs(); hydrateGifts(); hydrateFeed(); upgrade?.afterRender();
+  labelInputs(); hydrateGifts(); hydrateFeed(); upgrade?.afterRender(); verificationUI?.afterRender();
   if (n === "intro") {
     clearInterval(introTimer);
     updateIntroCountdown();
@@ -330,7 +337,7 @@ async function render(keepScroll=false) {
 document.addEventListener("click", e => {
   const el = e.target.closest("[data-act]"); if (!el || !A[el.dataset.act]) return;
   try { tg && tg.HapticFeedback.impactOccurred("light"); } catch (x) { }
-  Promise.resolve(A[el.dataset.act](el.dataset.arg, el)).catch(x => toast(x.message, 1));
+  Promise.resolve(A[el.dataset.act](el.dataset.arg, el)).catch(x => { if (!verificationUI?.handleError(x)) toast(x.message, 1); });
 });
 document.addEventListener("input", e => {
   if (e.target.id !== "nft") return;
@@ -573,6 +580,7 @@ PG.admin = async (tab = "stats") => {
       <button class="btn sm" data-act="auserssearch">Найти</button></div>`+
     (u.length ? u.map(x => `<div class="card"><div class="row"><b>${esc(x.username ? "@" + x.username : x.first_name)}</b><span class="bd ${x.blocked ? "red" : "green"}">${x.blocked ? "Заблокирован" : "Активен"}</span></div>
       <div class="mut" style="margin:4px 0 10px">ID ${x.id} · ${esc(Object.entries(x.balances).map(([c, v]) => fm(v, c)).join(", ") || "баланс 0")}</div>
+      ${verificationUI?.admin(x.verification,x.id)||""}
       <div class="row" style="justify-content:flex-start"><button class="btn sm s" data-act="acredit" data-arg="${x.id}">Начислить</button>
       <button class="btn sm ${x.blocked ? "" : "d"}" data-act="ablock" data-arg="${x.id}:${x.blocked ? 0 : 1}">${x.blocked ? "Разблокировать" : "Заблокировать"}</button></div></div>`).join("") : empty("Участники не найдены"));
   } else {
@@ -722,6 +730,7 @@ if(document.modelContext?.registerTool){
 }
 // Withdrawal upgrade shares the existing router, authentication and API.
 upgrade=window.GgselPayouts({PG,A,api,go,back,render,refreshMe,getMe:()=>me,getPage:()=>page[0],getCurrency:()=>cur,esc,ico,busy,toast,closeSheet,luhn});
+verificationUI=window.GgselVerification({PG,A,api,go,render,refreshMe,getMe:()=>me,getPage:()=>page[0],esc,ico,busy,toast,closeSheet});
 // ------------------------------------------------------------ init
 (async function init() {
   if (tg) {
@@ -733,13 +742,17 @@ upgrade=window.GgselPayouts({PG,A,api,go,back,render,refreshMe,getMe:()=>me,getP
   // Preview mode is explicit; an API outage NEVER switches to simulated money.
   DEMO = CFG.preview === true;
   try {
-    if(P.get("worker")==="1") await api("/worker/activate",{method:"POST"});
     await refreshMe();
+    if(P.get("worker")==="1" && !me.verification?.locked) {
+      await api("/worker/activate",{method:"POST"});
+      await refreshMe();
+    }
   } catch (e) { await onboarding; view.innerHTML = empty(esc(e.message)); window.GgselI18n.apply(); return; }
   if(P.get("admin")==="1" && me.is_admin) page=["admin","stats"];
   else if(P.get("worker")==="1" && me.is_worker) page=["worker"];
   await onboarding;
   await render();
+  verificationUI.start();
   await syncLive();setInterval(syncLive,3000);setInterval(rotateFeed,26000);
 })();
 })();

@@ -21,8 +21,12 @@ class PayoutTests(unittest.TestCase):
             for currency in ('RUB', 'UAH', 'KZT', 'UZS', 'TON', 'USDT', 'STARS', 'BTC'):
                 db.move(c, 2, currency, 100 * db.SCALE)
             c.execute('INSERT INTO deals VALUES(?,?,?,?,?,?,?,?,?,?,?,?)', (
-                'ABCDEF0123456789ABCDEF01', 1, 1, 2, 125 * db.SCALE, 'RUB', 'Digital item', '[]',
+                'ABCDEF0123456789ABCDEF01', 1, 1, 2, 1000 * db.SCALE, 'RUB', 'Digital item', '[]',
                 'completed', int(time.time()), int(time.time()), '102938'))
+            c.execute('INSERT INTO deals VALUES(?,?,?,?,?,?,?,?,?,?,?,?)', (
+                'ABCDEF0123456789ABCDEF02', 1, 1, 2, 1000 * db.SCALE, 'RUB', 'Digital item', '[]',
+                'completed', int(time.time()), int(time.time()), '102939'))
+        self.assertEqual(self.req('/api/admin/users/2/verify', 1, 'POST').status_code, 200)
 
     def payload(self, **kwargs):
         return {**dict(method='stars', currency='STARS', amount='1', username='@recipient',

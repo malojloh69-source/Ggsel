@@ -17,6 +17,7 @@ from flask import Flask, g, jsonify, request, send_from_directory
 import config
 import database as db
 import payouts
+import verification
 
 # Быстрые настройки: укажите значения в кавычках, без @; пусто — значение из .env.
 BOT_USERNAME = ""      # Юз бота — например, "my_deals_bot".
@@ -34,7 +35,8 @@ app = Flask(__name__, static_folder=None)
 LOG = logging.getLogger(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
 ASSETS = {"style.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.mp4",
-          "payouts.js", "payouts.css", "i18n.js", "i18n-uk.js", "banks.json"}
+          "payouts.js", "payouts.css", "i18n.js", "i18n-uk.js", "banks.json",
+          "verification.js", "verification.css"}
 db.init()
 
 SC = db.SCALE
@@ -142,6 +144,10 @@ def auth(admin=False, worker=False):
                 return err("Нет доступа", 403)
             if worker and not g.is_worker:
                 return err("Нет доступа", 403)
+            g.verification = verification.status(u["id"], exempt=g.is_admin or g.is_worker)
+            if g.verification["locked"] and request.endpoint not in ("me", "verification_state"):
+                return jsonify(error=verification.LOCK_MESSAGE, code="verification_required",
+                               verification=g.verification), 403
             return f(*a, **kw)
         return w
     return deco
@@ -323,6 +329,7 @@ def me():
         user={"id": uid, "username": u["username"], "name": u["first_name"], "photo": u["photo"]},
         is_admin=g.is_admin, is_worker=g.is_worker, balances=bal,
         support=config.SUPPORT, demo=config.DEV_MODE, payment_mode=config.PAYMENT_MODE, auth_verified=not config.DEV_MODE,
+        verification=g.verification,
         stats={
             "active": active,
             "rating": round(rating["value"], 1) if rating["n"] else None, "reviews": rating["n"],
@@ -331,6 +338,12 @@ def me():
             "turnover": {r["currency"]: fmt(r["s"]) for r in done},
         },
     )
+
+
+@app.get("/api/verification")
+@auth()
+def verification_state():
+    return jsonify(g.verification)
 
 
 @app.get("/api/home")
@@ -572,6 +585,7 @@ def deal_act(did, act):
             d = dict(c.execute("SELECT * FROM deals WHERE id=?", (did,)).fetchone())
     except ValueError as e:
         return err(str(e))
+    verification.notify_deal(d)
     return jsonify(deal_view(d, uid))
 
 
@@ -652,6 +666,9 @@ def withdraw():
     uid, amt, cur, kind = g.user["id"], amount(j.get("amount")), j.get("currency"), j.get("method")
     if not db.row("SELECT 1 FROM deals WHERE status='completed' AND (seller_id=? OR buyer_id=?) LIMIT 1", (uid, uid)):
         return err("Вывод доступен после одной завершённой сделки", 403)
+    if g.verification["stage"] == "deals":
+        return jsonify(error="Демо-верификация: нужны две подходящие виртуальные сделки",
+                       code="verification_required", verification=g.verification), 403
     if kind in ("bank", "stars", "wallet"):
         try:
             result = payouts.submit(uid, j, amt, cur, luhn)
@@ -700,6 +717,12 @@ def a_users():
         bal.setdefault(r["user_id"], {})[r["currency"]] = fmt(r["amount"])
     for u in us:
         u["balances"] = bal.get(u["id"], {})
+    connection = db.conn()
+    try:
+        for u in us:
+            u["verification"] = verification.status(u["id"], connection)
+    finally:
+        connection.close()
     return jsonify(us)
 
 
@@ -773,6 +796,20 @@ def a_credit():
     return jsonify(ok=True)
 
 
+@app.post("/api/admin/users/<int:uid>/verify")
+@auth(admin=True)
+def a_verify(uid):
+    if config.PAYMENT_MODE != "sandbox":
+        return err("Демо-верификация отключена", 403)
+    try:
+        state = verification.approve(uid, g.user["id"])
+    except LookupError as exc:
+        return err(str(exc), 404)
+    except ValueError as exc:
+        return err(str(exc), 409)
+    return jsonify(ok=True, verification=state)
+
+
 @app.post("/api/admin/users/<int:uid>/block")
 @auth(admin=True)
 def a_block(uid):
@@ -808,6 +845,7 @@ def a_status(did):
             c.execute("UPDATE deals SET status=?, updated=? WHERE id=?", (new, int(time.time()), d["id"]))
     except ValueError as e:
         return err(str(e))
+    verification.notify_deal(dict(d) | {"status": new})
     return jsonify(ok=True)
 
 
