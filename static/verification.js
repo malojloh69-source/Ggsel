@@ -5,27 +5,27 @@ const {PG,A,api,go,render,refreshMe,getMe,getPage,esc,ico,busy,toast,closeSheet}
 const I=window.GgselI18n;
 const S={
  note:['Сделки и баланс виртуальные. Переводы денег и передача подарков для верификации не нужны.','Deals and balances are virtual. Verification does not require money transfers or sending gifts.','Угоди й баланс віртуальні. Перекази грошей і передавання подарунків для верифікації не потрібні.'],
- virtualDeals:['Виртуальные сделки','Virtual deals','Віртуальні угоди'],
+ virtualDeals:['Сделки','Deals','Угоди'],
  wait:['Ожидает подтверждения','Awaiting approval','Очікує підтвердження'],
- requirement:['Нужны две завершённые виртуальные сделки, каждая от 1 000 ₽ в эквиваленте.','Complete two virtual deals, each worth the equivalent of RUB 1,000 or more.','Потрібні дві завершені віртуальні угоди, кожна від 1 000 ₽ в еквіваленті.'],
- after:['Затем администратор бесплатно подтвердит верификацию.','An administrator will then approve verification free of charge.','Потім адміністратор безкоштовно підтвердить верифікацію.'],
+ requirement:['Нужны две завершённые сделки, каждая от 1 000 ₽ в эквиваленте.','Complete two deals, each worth the equivalent of RUB 1,000 or more.','Потрібні дві завершені угоди, кожна від 1 000 ₽ в еквіваленті.'],
+ after:['Затем администратор подтвердит верификацию.','An administrator will then approve verification.','Потім адміністратор підтвердить верифікацію.'],
  locked:['Доступ временно ограничен','Access is temporarily restricted','Доступ тимчасово обмежено'],
- copy:['Две виртуальные сделки проверены. Для продолжения необходимо подтверждение администратора.','Your two virtual deals have been checked. An administrator must approve verification to continue.','Дві віртуальні угоди перевірено. Для продовження потрібне підтвердження адміністратора.'],
+ copy:['Две сделки проверены. Для продолжения необходимо подтверждение администратора.','Your two deals have been checked. An administrator must approve verification to continue.','Дві угоди перевірено. Для продовження потрібне підтвердження адміністратора.'],
  refresh:['Проверить статус','Check status','Перевірити статус'],
  same:['Подтверждение пока не получено','Approval is still pending','Підтвердження ще не отримано'],
- equivalents:['Виртуальные эквиваленты','Virtual equivalents','Віртуальні еквіваленти'],
- equivalentsNote:['Фиксированные значения из макета для одной виртуальной сделки.','Fixed prototype values for one virtual deal.','Фіксовані значення з макета для однієї віртуальної угоди.'],
+ equivalents:['Эквиваленты','Equivalents','Еквіваленти'],
+ equivalentsNote:['Фиксированные значения для одной сделки.','Fixed values for one deal.','Фіксовані значення для однієї угоди.'],
  done:['Верификация подтверждена','Verification approved','Верифікацію підтверджено'],
  doneCopy:['Проверка завершена. Доступ восстановлен.','Verification is complete. Access has been restored.','Перевірку завершено. Доступ відновлено.'],
  admin:['Верификация','Verification','Верифікація'],
- qualified:['Подходящие виртуальные сделки','Qualifying virtual deals','Відповідні віртуальні угоди'],
+ qualified:['Подходящие сделки','Qualifying deals','Відповідні угоди'],
  approve:['Подтвердить верификацию','Approve verification','Підтвердити верифікацію'],
  disabled:['Верификация сейчас недоступна','Verification is currently unavailable','Верифікація зараз недоступна'],
 };
 const tr=key=>S[key][{ru:0,en:1,uk:2}[I.lang]];
-const note=()=>`<aside class="verification-demo" role="note"><span>${tr('note')}</span></aside>`;
+const note=()=>'';
 const video=name=>`<video class="anim verification-animation" autoplay loop muted playsinline preload="metadata" aria-hidden="true" src="/static/assets/animations/${name}.webm"></video>`;
-const title=()=>`<h1>${I.t('verification')}</h1>`;
+const title=()=>`<h1>${I.t('verification')} <small class="verification-indicator">Демо</small></h1>`;
 const status=()=>getMe()?.verification;
 const pageNames=new Set(['verification','verification-currencies']);
 function screen(s){
