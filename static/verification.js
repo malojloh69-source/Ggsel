@@ -23,9 +23,9 @@ const S={
  disabled:['Верификация сейчас недоступна','Verification is currently unavailable','Верифікація зараз недоступна'],
 };
 const tr=key=>S[key][{ru:0,en:1,uk:2}[I.lang]];
-const note=()=>'';
+const note=()=>`<p class="mut" style="font-size:11px;line-height:1.4;margin:6px 0 12px">${tr('note')}</p>`;
 const video=name=>`<video class="anim verification-animation" autoplay loop muted playsinline preload="metadata" aria-hidden="true" src="/static/assets/animations/${name}.webm"></video>`;
-const title=()=>`<h1>${I.t('verification')} <small class="verification-indicator">Демо</small></h1>`;
+const title=()=>`<h1>${I.t('verification')}</h1>`;
 const status=()=>getMe()?.verification;
 const pageNames=new Set(['verification','verification-currencies']);
 function screen(s){
