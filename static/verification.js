@@ -1,7 +1,7 @@
 /* Verification concerns virtual deals only; existing payout forms remain intact. */
 window.GgselVerification = function (ctx) {
 'use strict';
-const {PG,A,api,go,render,refreshMe,getMe,getPage,esc,ico,busy,toast,closeSheet}=ctx;
+const {PG,A,api,go,render,refreshMe,getMe,getPage,esc,ico,busy,toast,closeSheet,currencyLabel}=ctx;
 const I=window.GgselI18n;
 const S={
  virtualDeals:['Сделки','Deals','Угоди'],
@@ -40,7 +40,7 @@ function screen(s){
  </div></section>`;
 }
 PG.verification=async()=>{await refreshMe();return screen(status())};
-PG['verification-currencies']=async()=>{await refreshMe();const s=status();if(!s?.enabled||s.stage==='support'||s.stage==='verified')return screen(s);return `<section class="verification-page"><button class="back" data-act="back">${ico('back')}${I.t('back')}</button><h1>${tr('equivalents')}</h1><p class="mut">${tr('equivalentsNote')}</p><div class="card summary">${Object.entries(s.thresholds).map(([currency,value])=>`<div class="summary-row"><span>${currency}</span><b>${Number(value).toLocaleString(I.locale,{maximumFractionDigits:8})}</b></div>`).join('')}</div></section>`};
+PG['verification-currencies']=async()=>{await refreshMe();const s=status();if(!s?.enabled||s.stage==='support'||s.stage==='verified')return screen(s);return `<section class="verification-page"><button class="back" data-act="back">${ico('back')}${I.t('back')}</button><h1>${tr('equivalents')}</h1><p class="mut">${tr('equivalentsNote')}</p><div class="card summary">${Object.entries(s.thresholds).map(([currency,value])=>`<div class="summary-row"><span>${esc(currencyLabel(currency))}</span><b>${Number(value).toLocaleString(I.locale,{maximumFractionDigits:8})}</b></div>`).join('')}</div></section>`};
 for(const name of Object.keys(PG).filter(name=>name.startsWith('payout-')||name==='reqs')){
  const original=PG[name];
  PG[name]=async(...args)=>{await refreshMe();const s=status();return s?.stage==='deals'||s?.locked?screen(s):original(...args)};

@@ -9,7 +9,20 @@ const CATALOG = [{"title": "Spy Agaric", "number": "27641", "lottie": "https://d
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const CUR = ["RUB", "UAH", "KZT", "UZS", "TON", "USDT", "STARS", "BTC"];
-const SYM = { RUB: "₽", UAH: "₴", KZT: "₸", UZS: "сум", TON: "TON", USDT: "USDT", STARS: "★", BTC: "₿" };
+const SYM = { RUB: "₽", UAH: "₴", KZT: "₸", UZS: "сум", STARS: "★", BTC: "₿" };
+const CURRENCY_ICONS = {
+  RUB: "currency/ru.svg",
+  UAH: "currency/ua.svg",
+  KZT: "currency/kz.svg",
+  UZS: "currency/uz.svg",
+  TON: "crypto/gram.svg",
+  USDT: "crypto/usdt.svg",
+  STARS: "animations/stars.png",
+  BTC: "crypto/btc.svg",
+};
+// Keep TON as the stored currency key. Only the public name and symbol changed.
+const currencyLabel = currency => currency === "TON" ? "GRAM" : currency;
+const currencyIcon = currency => `<img class="currency-icon" src="/static/assets/${CURRENCY_ICONS[currency]}" alt="" width="20" height="20">`;
 const ST = {
   created: ["Создана", "gray"], waiting_participant: ["Ожидает участника", "amber"], waiting_payment: ["Ожидает оплату", "blue"],
   paid: ["Оплата получена", "green"], completed: ["Завершена", "green"], cancelled: ["Отменена", "red"],
@@ -22,9 +35,9 @@ const NFT_RE = /^https:\/\/t\.me\/nft\/[A-Za-z0-9_]{2,64}-\d{1,12}$/;
 const TABMAP = { home: "home", deals: "deals", deal: "deals", intro: "deals", new: "deals", reqs: "reqs", profile: "profile", ops: "profile", support: "profile", admin: "profile", worker: "profile" };
 
 const ico = n => `<svg class="ic"><use href="#i-${n}"/></svg>`;
-const fm = (v, c) => `${Number(v).toLocaleString(window.GgselI18n?.locale || "ru-RU", { maximumFractionDigits: 8 })} ${SYM[c] || c}`;
+const fm = (v, c) => `${Number(v).toLocaleString(window.GgselI18n?.locale || "ru-RU", { maximumFractionDigits: 8 })} ${SYM[c] || currencyLabel(c)}`;
 const fmBalanceNumber = v => Number(v).toLocaleString(window.GgselI18n?.locale || "ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 8 });
-const fmBalance = (v, c) => `${fmBalanceNumber(v)} ${SYM[c] || c}`;
+const fmBalance = (v, c) => `${fmBalanceNumber(v)} ${SYM[c] || currencyLabel(c)}`;
 const homeBalance = (v, c) => c === "STARS"
   ? `<span class="balance-amount">${esc(fmBalanceNumber(v))}</span><picture class="balance-star"><source media="(prefers-reduced-motion: reduce)" srcset="/static/assets/animations/stars.png"><img src="/static/assets/animations/stars.webp" width="192" height="192" alt="Stars"></picture>`
   : esc(fmBalance(v, c));
@@ -33,7 +46,7 @@ const sk = n => '<div class="sk"></div>'.repeat(n);
 const empty = t => `<div class="empty">${t}</div>`;
 const bk = `<button class="back" data-act="back">${ico("back")}Назад</button>`;
 const stars = n => "★".repeat(n) + "☆".repeat(5 - n);
-const chipsCur = (id, sel = "RUB") => `<div class="grid3" id="${id}">${CUR.map(c => `<button class="opt ${c === sel ? "on" : ""}" data-act="seg" data-arg="${c}">${c}</button>`).join("")}</div>`;
+const chipsCur = (id, sel = "RUB") => `<div class="grid3" id="${id}">${CUR.map(c => `<button class="opt currency-choice ${c === sel ? "on" : ""}" data-act="seg" data-arg="${c}">${currencyIcon(c)}${currencyLabel(c)}</button>`).join("")}</div>`;
 const mask = v => (v.length > 10 ? v.slice(0, 4) + " •••• " + v.slice(-4) : v);
 
 const view = $("#view");
@@ -390,12 +403,30 @@ const loadPrototypeReviews = () => prototypeReviewLoad ||= fetch('/static/protot
 PG.home = async () => {
   const [h, prototypeReviews] = await Promise.all([api("/home"),loadPrototypeReviews(),refreshMe()]);
   const reviews=h.reviews;
-  return `<button class="hero-banner" data-act="new" aria-label="Создать сделку"><img src="/static/assets/ggsell-p2p-banner.webp" alt="GG SELL — P2P-сделки в Telegram. Создавайте сделки и следите за каждым этапом." loading="eager"></button>
-  <h3>Быстрые действия</h3><div class="qa"><button data-act="new"><i>${ico("plus")}</i>Новая сделка</button><button data-act="joinsheet"><i>${ico("box")}</i>Вступить в<br>сделку</button><button data-act="tab" data-arg="deals"><i>${ico("gem")}</i>Мои сделки</button></div>
-  <div class="card balance-card"><div class="mut">Ваш баланс</div><div class="big" id="balv">${homeBalance(me.balances[cur],cur)}</div>
-  <div class="chips" id="curs">${CUR.map(c=>`<button class="chip ${c===cur?"on":""}" data-act="cur" data-arg="${c}">${c}</button>`).join("")}</div></div>
+  const { t, text } = window.GgselI18n;
+  return `<section class="hero-banner" aria-labelledby="home-banner-title">
+    <img class="hero-banner-art" src="/static/assets/ggsell-p2p-banner-v2.webp" alt="" fetchpriority="high">
+    <div class="hero-banner-copy">
+      <span class="hero-banner-kicker">P2P</span>
+      <h2 id="home-banner-title">${esc(t("heroTitle"))}</h2>
+      <p>${esc(t("heroCopy"))}</p>
+      <button class="hero-banner-action" type="button" data-act="new">${esc(t("createDeal"))}</button>
+    </div>
+  </section>
+  <h3 id="quick-actions-title">Быстрые действия</h3>
+  <div class="qa" role="group" aria-labelledby="quick-actions-title">
+    <button data-act="new"><i>${ico("plus")}</i><span>Новая сделка</span></button>
+    <button data-act="joinsheet"><i>${ico("box")}</i><span>${esc(text("Вступить в"))} ${esc(text("сделку"))}</span></button>
+    <button data-act="tab" data-arg="deals"><i>${ico("gem")}</i><span>Мои сделки</span></button>
+  </div>
+  <div class="card balance-card">
+    <div class="mut">Ваш баланс</div>
+    <div class="big" id="balv">${homeBalance(me.balances[cur],cur)}</div>
+    <div class="chips" id="curs">${CUR.map(c=>`<button class="chip currency-choice ${c===cur?"on":""}" data-act="cur" data-arg="${c}">${currencyIcon(c)}${currencyLabel(c)}</button>`).join("")}</div>
+  </div>
   <h3>Последние сделки<button class="text-button" data-act="tab" data-arg="deals">Все</button></h3><div id="recent-deals">${h.deals.length?`<div class="list">${h.deals.map(dealCard).join("")}</div>`:empty(ico("bag")+"<p>У вас пока нет сделок</p>")}</div>
-  <h3>Каталог подарков<span class="live" id="live-state">● LIVE</span></h3><div id="live-feed">${catalogCards()}</div>
+  <h3>Каталог подарков<span class="live" id="live-state">● LIVE</span></h3>
+  <div id="live-feed">${catalogCards()}</div>
   <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${reviews.length?reviews.map(reviewCard).join(""):""}${prototypeReviews.length?prototypeReviews.map(reviewCard).join(""):""}${!reviews.length&&!prototypeReviews.length?empty("Отзывов пока нет"):""}</div>`;
 };
 
@@ -738,13 +769,13 @@ if(document.modelContext?.registerTool){
  try { document.modelContext.registerTool({name:"list_my_deals",title:"Мои сделки",description:"Read the signed-in participant's deals.",inputSchema:{type:"object",properties:{filter:{type:"string",enum:["all","active","done"]}},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},async execute(input){const f=input?.filter||"all";if(!["all","active","done"].includes(f))throw new Error("Invalid filter");return await api("/deals?filter="+f);}}); }catch{}
 }
 // Withdrawal upgrade shares the existing router, authentication and API.
-upgrade=window.GgselPayouts({PG,A,api,go,back,render,refreshMe,getMe:()=>me,getPage:()=>page[0],getCurrency:()=>cur,esc,ico,busy,toast,closeSheet,luhn});
-verificationUI=window.GgselVerification({PG,A,api,go,render,refreshMe,getMe:()=>me,getPage:()=>page[0],esc,ico,busy,toast,closeSheet});
+upgrade=window.GgselPayouts({PG,A,api,go,back,render,refreshMe,getMe:()=>me,getPage:()=>page[0],getCurrency:()=>cur,esc,ico,busy,toast,closeSheet,luhn,currencyLabel,currencyIcon});
+verificationUI=window.GgselVerification({PG,A,api,go,render,refreshMe,getMe:()=>me,getPage:()=>page[0],esc,ico,busy,toast,closeSheet,currencyLabel});
 // ------------------------------------------------------------ init
 (async function init() {
   if (tg) {
     tg.ready(); tg.expand();
-    try { tg.setHeaderColor("#f6f5f0"); tg.setBackgroundColor("#f6f5f0"); tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) { }
+    try { tg.setHeaderColor("#ffffff"); tg.setBackgroundColor("#ffffff"); tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) { }
     tg.BackButton && tg.BackButton.onClick(back);
   }
   const onboarding=upgrade.start();

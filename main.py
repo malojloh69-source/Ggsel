@@ -34,7 +34,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=None)
 LOG = logging.getLogger(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
-ASSETS = {"style.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.mp4",
+ASSETS = {"style.css", "ggsel-theme.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.mp4",
           "payouts.js", "payouts.css", "i18n.js", "i18n-uk.js", "banks.json",
           "verification.js", "verification.css", "prototype-reviews.json"}
 db.init()
@@ -281,7 +281,7 @@ def assets(name):
 @app.get("/static/assets/<name>")
 def banner_asset(name):
     # Explicitly allow the public homepage banner.
-    if name != "ggsell-p2p-banner.webp":
+    if name not in {"ggsell-p2p-banner.webp", "ggsell-p2p-banner-v2.webp"}:
         return err("Не найдено", 404)
     return send_from_directory(os.path.join(BASE, "static", "assets"), name, mimetype="image/webp")
 
@@ -297,7 +297,8 @@ def gift_animation(name):
 def payout_asset(category, name):
     public = {
         "banks": {os.path.basename(b["icon"]) for b in payouts.BANKS},
-        "crypto": {"ton.png", "usdt.svg", "btc.svg"},
+        "crypto": {"gram.svg", "ton.png", "usdt.svg", "btc.svg"},
+        "currency": {"ru.svg", "ua.svg", "kz.svg", "uz.svg"},
         "animations": {f"{n}.webm" for n in ("purse", "card", "wallet", "stars", "ru", "en", "uk", "warning", "success")} | {"stars.mp4", "stars.webp", "stars.png"},
     }
     if name not in public.get(category, set()):
