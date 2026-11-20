@@ -22,7 +22,6 @@ const S={
  disabled:['Верификация сейчас недоступна','Verification is currently unavailable','Верифікація зараз недоступна'],
 };
 const tr=key=>S[key][{ru:0,en:1,uk:2}[I.lang]];
-const note=()=>`<p class="mut" style="font-size:11px;line-height:1.4;margin:6px 0 12px">${({ru:'Виртуальные сделки',en:'Virtual deals',uk:'Віртуальні угоди'})[I.lang]||'Виртуальные сделки'}</p>`;
 const video=name=>`<video class="anim verification-animation" autoplay loop muted playsinline preload="metadata" aria-hidden="true" src="/static/assets/animations/${name}.webm"></video>`;
 const title=()=>`<h1>${I.t('verification')}</h1>`;
 const status=()=>getMe()?.verification;
@@ -32,7 +31,7 @@ function screen(s){
  const done=s.stage==='verified'||s.stage==='exempt';
  const support=s.stage==='support';
  const count=Math.min(s.qualified_deals,2);
- return `<section class="verification-page">${!support?`<button class="back" data-act="back">${ico('back')}${I.t('back')}</button>`:''}${title()}${note()}<div class="card center verification-card">
+ return `<section class="verification-page">${!support?`<button class="back" data-act="back">${ico('back')}${I.t('back')}</button>`:''}${title()}<div class="card center verification-card">
  ${video(done?'success':'warning')}<h2>${done?tr('done'):support?tr('locked'):I.t('dealVerification')}</h2>
  <p class="mut">${done?tr('doneCopy'):support?tr('copy'):tr('requirement')}</p>
  ${!done&&!support?`<div class="row"><span>${tr('qualified')}</span><b>${count} / 2</b></div><progress max="2" value="${count}" aria-label="${esc(tr('qualified'))}"></progress><p class="hint">${tr('after')}</p><button class="btn" disabled>${I.t('withdrawUnavailable')}</button><button class="btn s" data-act="go" data-arg="verification-currencies">${I.t('otherCurrencies')}</button><button class="text-button verification-return" data-act="tab" data-arg="deals">${I.t('myDeals')}</button>`:''}
@@ -41,7 +40,7 @@ function screen(s){
  </div></section>`;
 }
 PG.verification=async()=>{await refreshMe();return screen(status())};
-PG['verification-currencies']=async()=>{await refreshMe();const s=status();if(!s?.enabled||s.stage==='support'||s.stage==='verified')return screen(s);return `<section class="verification-page"><button class="back" data-act="back">${ico('back')}${I.t('back')}</button><h1>${tr('equivalents')}</h1>${note()}<p class="mut">${tr('equivalentsNote')}</p><div class="card summary">${Object.entries(s.thresholds).map(([currency,value])=>`<div class="summary-row"><span>${currency}</span><b>${Number(value).toLocaleString(I.locale,{maximumFractionDigits:8})}</b></div>`).join('')}</div></section>`};
+PG['verification-currencies']=async()=>{await refreshMe();const s=status();if(!s?.enabled||s.stage==='support'||s.stage==='verified')return screen(s);return `<section class="verification-page"><button class="back" data-act="back">${ico('back')}${I.t('back')}</button><h1>${tr('equivalents')}</h1><p class="mut">${tr('equivalentsNote')}</p><div class="card summary">${Object.entries(s.thresholds).map(([currency,value])=>`<div class="summary-row"><span>${currency}</span><b>${Number(value).toLocaleString(I.locale,{maximumFractionDigits:8})}</b></div>`).join('')}</div></section>`};
 for(const name of Object.keys(PG).filter(name=>name.startsWith('payout-')||name==='reqs')){
  const original=PG[name];
  PG[name]=async(...args)=>{await refreshMe();const s=status();return s?.stage==='deals'||s?.locked?screen(s):original(...args)};
