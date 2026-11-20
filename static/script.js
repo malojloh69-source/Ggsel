@@ -228,8 +228,8 @@ function demoRoute(path, o) {
   }
   throw new Error("Не найдено");
 }
-const dm = () => !(me.demo || DEMO) ? "" : `<div class="card"><b>Тестовые участники</b>
-  <div class="chips" style="margin:0">${[1, 2, 3].map(n => `<button class="chip ${n === me.user.id ? "on" : ""}" data-act="duser" data-arg="${n}">Участник ${n}</button>`).join("")}<button class="chip" data-act="dreset">Сброс</button>${DEMO ? '<button class="chip" data-act="demoAdmin">Тестовый доступ к панели</button>' : ""}</div></div>`;
+const dm = () => !(me.demo || DEMO) ? "" : `<div class="card"><b>Участники</b>
+  <div class="chips" style="margin:0">${[1, 2, 3].map(n => `<button class="chip ${n === me.user.id ? "on" : ""}" data-act="duser" data-arg="${n}">Участник ${n}</button>`).join("")}<button class="chip" data-act="dreset">Сброс</button>${DEMO ? '<button class="chip" data-act="demoAdmin">Доступ к панели</button>' : ""}</div></div>`;
 A.demoAdmin = async () => {
   if (!DEMO) return;
   DB.admins[duid] = true;
@@ -392,7 +392,7 @@ PG.home = async () => {
   <div class="chips" id="curs">${CUR.map(c=>`<button class="chip ${c===cur?"on":""}" data-act="cur" data-arg="${c}">${c}</button>`).join("")}</div></div>
   <h3>Последние сделки<button class="text-button" data-act="tab" data-arg="deals">Все</button></h3><div id="recent-deals">${h.deals.length?`<div class="list">${h.deals.map(dealCard).join("")}</div>`:empty(ico("bag")+"<p>У вас пока нет сделок</p>")}</div>
   <h3>Каталог подарков<span class="live" id="live-state">● LIVE</span></h3><div id="live-feed">${catalogCards()}</div>
-  <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${reviews.length?reviews.map(reviewCard).join(""):""}${prototypeReviews.length?'<p class="mut" style="font-size:12px;font-weight:600;margin:12px 0 8px">Демонстрационные отзывы</p>'+prototypeReviews.map(reviewCard).join(""):""}${!reviews.length&&!prototypeReviews.length?empty("Отзывов пока нет"):""}</div>`;
+  <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${reviews.length?reviews.map(reviewCard).join(""):""}${prototypeReviews.length?prototypeReviews.map(reviewCard).join(""):""}${!reviews.length&&!prototypeReviews.length?empty("Отзывов пока нет"):""}</div>`;
 };
 
 PG.deals = async (f = "all") => {
@@ -493,7 +493,7 @@ A.reqsave = (k, b) => busy(b, async () => {
   await api("/requisites/" + k, { method: "PUT", body: { value: $("#rv").value } });
   closeSheet(); haptic("success"); toast("Сохранено"); render();
 });
-A.topup = () => sheet(`<h2 class="topup-title">${ico("plus")} Пополнение баланса</h2><p class="mut">Реальные платежи не подключены. Заявка создаёт запись в учётной системе; деньги с карты не списываются.</p>
+A.topup = () => sheet(`<h2 class="topup-title">${ico("plus")} Пополнение баланса</h2>
   <label>Валюта</label><input value="RUB" readonly aria-label="Валюта">
   <label>Сумма</label><input id="dam" inputmode="decimal" placeholder="0.00" autocomplete="off">
   <label>Комментарий (необязательно)</label><input id="dcomment" maxlength="160" placeholder="Например, номер перевода или чек" autocomplete="off">
@@ -546,7 +546,7 @@ PG.worker = async () => {
   const w = await api("/worker");
   const balances = Object.entries(w.balances).map(([currency, value]) => fmBalance(value, currency)).join(" · ") || "0 RUB";
   const enabled = w.payment_mode === "sandbox";
-  return `${bk}<h1>Ворк-панель</h1><div class="card"><b>Ваш баланс в приложении</b><p>${esc(balances)}</p><div class="hint">Показывает запись в базе. Денежный провайдер не подключён.</div></div>
+  return `${bk}<h1>Ворк-панель</h1><div class="card"><b>Ваш баланс в приложении</b><p>${esc(balances)}</p></div>
   ${enabled ? `<div class="card"><h3>Начислить себе баланс</h3><label>Валюта</label>${chipsCur("wcur")}
     <label>Сумма</label><input id="wamount" inputmode="decimal" placeholder="Например, 100" autocomplete="off"><button class="btn" data-act="wcredit">Начислить</button></div>` : '<div class="card"><p>Начисления отключены.</p></div>'}
   ${enabled ? `<div class="card"><h3>Дополнительная статистика</h3><label>Добавленное количество</label>
