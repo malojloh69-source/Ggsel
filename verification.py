@@ -14,8 +14,8 @@ THRESHOLDS = {
     "TON": "11.9453", "USDT": "12.2186", "STARS": "939", "BTC": "0.00019716",
 }
 MIN_UNITS = {currency: int(Decimal(value) * db.SCALE) for currency, value in THRESHOLDS.items()}
-DEMO_NOTE = "Демо: сделки и баланс виртуальные. Переводы денег и передача подарков для верификации не нужны."
-LOCK_MESSAGE = "Демо-верификация: необходимо подтверждение администратора."
+DEMO_NOTE = "Переводы денег и передача подарков для верификации не нужны."
+LOCK_MESSAGE = "Верификация: необходимо подтверждение администратора."
 LOG = logging.getLogger(__name__)
 
 
@@ -61,7 +61,7 @@ def lock_notice():
     if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{4,31}", config.SUPPORT or ""):
         buttons.append([{"text": "Написать в поддержку", "url": "https://t.me/" + config.SUPPORT}])
     return {
-        "text": "Демо-верификация\n\nДве виртуальные сделки проверены. "
+        "text": "Верификация\n\nДве виртуальные сделки проверены. "
                 "Доступ временно ограничен до подтверждения администратором.\n\n" + DEMO_NOTE,
         "reply_markup": {"inline_keyboard": buttons},
     }
@@ -69,7 +69,7 @@ def lock_notice():
 
 def first_notice():
     return {
-        "text": "Демо-верификация\n\nПервая успешная виртуальная сделка завершена. "
+        "text": "Верификация\n\nПервая успешная виртуальная сделка завершена. "
                 "Требуется верификация — откройте мини-приложение для просмотра условий.\n\n" + DEMO_NOTE,
         "reply_markup": {"inline_keyboard": [[{
             "text": "Открыть верификацию", "web_app": {"url": config.PUBLIC_BASE_URL}
