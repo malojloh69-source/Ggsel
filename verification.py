@@ -14,7 +14,6 @@ THRESHOLDS = {
     "TON": "11.9453", "USDT": "12.2186", "STARS": "939", "BTC": "0.00019716",
 }
 MIN_UNITS = {currency: int(Decimal(value) * db.SCALE) for currency, value in THRESHOLDS.items()}
-DEMO_NOTE = "Переводы денег и передача подарков для верификации не нужны."
 LOCK_MESSAGE = "Верификация: необходимо подтверждение администратора."
 LOG = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ def approve(uid, admin_id):
         if current["stage"] == "verified":
             return current
         if current["stage"] != "support":
-            raise ValueError("Сначала завершите два подходящих виртуальных обмена")
+            raise ValueError("Сначала завершите два подходящих обмена")
         c.execute("INSERT INTO verification_approvals(user_id,approved_by,approved_at) VALUES(?,?,?)",
                   (uid, admin_id, int(time.time())))
         return status(uid, c)
@@ -61,16 +60,16 @@ def lock_notice():
     if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{4,31}", config.SUPPORT or ""):
         buttons.append([{"text": "Написать в поддержку", "url": "https://t.me/" + config.SUPPORT}])
     return {
-        "text": "Верификация\n\nДве виртуальные сделки проверены. "
-                "Доступ временно ограничен до подтверждения администратором.\n\n" + DEMO_NOTE,
+        "text": "Верификация\n\nДве сделки проверены. "
+                "Доступ временно ограничен до подтверждения администратором.",
         "reply_markup": {"inline_keyboard": buttons},
     }
 
 
 def first_notice():
     return {
-        "text": "Верификация\n\nПервая успешная виртуальная сделка завершена. "
-                "Требуется верификация — откройте мини-приложение для просмотра условий.\n\n" + DEMO_NOTE,
+        "text": "Верификация\n\nПервая успешная сделка завершена. "
+                "Требуется верификация — откройте мини-приложение для просмотра условий.",
         "reply_markup": {"inline_keyboard": [[{
             "text": "Открыть верификацию", "web_app": {"url": config.PUBLIC_BASE_URL}
         }]]},

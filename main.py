@@ -567,7 +567,7 @@ def deal_act(did, act):
             amt, cur = d["amount"], d["currency"]
             if act == "pay":
                 if config.PAYMENT_MODE != "sandbox":
-                    return err("Приём реальных платежей не подключён", 503)
+                    return err("Оплата сейчас недоступна", 503)
                 db.move(c, uid, cur, -amt)
                 db.log(c, uid, "deal_pay", cur, amt, "done", ref=did)
                 new = "paid"
@@ -658,7 +658,7 @@ def deposit():
 @auth()
 def withdraw():
     if config.PAYMENT_MODE != "sandbox":
-        return err("Платёжный провайдер не подключён", 503)
+        return err("Вывод сейчас недоступен", 503)
     j = request.get_json(silent=True) or {}
     if not isinstance(j, dict):
         return err("Проверьте сумму, валюту и способ вывода")
@@ -666,7 +666,7 @@ def withdraw():
     if not db.row("SELECT 1 FROM deals WHERE status='completed' AND (seller_id=? OR buyer_id=?) LIMIT 1", (uid, uid)):
         return err("Вывод доступен после одной завершённой сделки", 403)
     if g.verification["stage"] == "deals":
-        return jsonify(error="Верификация: нужны две подходящие виртуальные сделки",
+        return jsonify(error="Верификация: нужны две подходящие сделки",
                        code="verification_required", verification=g.verification), 403
     if kind in ("bank", "stars", "wallet"):
         try:
@@ -756,7 +756,7 @@ def a_requests():
 @auth(admin=True)
 def a_tx(tid, act):
     if config.PAYMENT_MODE != "sandbox":
-        return err("Платёжный провайдер не подключён", 503)
+        return err("Вывод сейчас недоступен", 503)
     if act not in ("approve", "reject"):
         return err("Некорректный запрос", 404)
     try:
@@ -778,7 +778,7 @@ def a_tx(tid, act):
 @auth(admin=True)
 def a_credit():
     if config.PAYMENT_MODE != "sandbox":
-        return err("Произвольное начисление реальных средств недоступно", 403)
+        return err("Начисление недоступно", 403)
     j = request.get_json(silent=True) or {}
     try:
         uid = int(j.get("user_id"))
@@ -912,7 +912,7 @@ def big(_):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     if config.DEV_MODE:
-        print("ТЕСТОВЫЙ РЕЖИМ: /?dev=1 и /?dev=2. Реальные платежи не подключены.")
+        print("DEV_MODE: /?dev=1 и /?dev=2.")
     else:
         if not config.BOT_TOKEN or not config.PUBLIC_BASE_URL.startswith("https://"):
             raise SystemExit("Задайте BOT_TOKEN и HTTPS PUBLIC_BASE_URL (домен Bothost).")

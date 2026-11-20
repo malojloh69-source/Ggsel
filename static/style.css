@@ -37,7 +37,6 @@ p { margin: 9px 0; }
 .round { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 50%; background: #fff; box-shadow: var(--sh); color: #52606a; transition: transform .16s; }
 .round:active { transform: scale(.95); }
 .footer-notices { margin-top: 30px; }
-.prototype-note { margin: 0 0 6px; color: #87877f; font-size: 11px; line-height: 1.25; }
 .mode-note { margin-bottom: 15px; padding: 7px 10px; color: #42744d; background: #eaf3e9; border: 1px solid #dceadd; border-radius: 11px; font-size: 12px; line-height: 1.35; }
 .mode-note button { font-weight: 600; text-decoration: underline; margin-left: 4px; }
 h1 { margin: 18px 0 21px; font-size: 29px; font-weight: 680; line-height: 1.14; letter-spacing: -.025em; }

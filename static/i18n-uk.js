@@ -3,7 +3,7 @@ window.GgselUkrainian={
   "Interface review": "Перегляд інтерфейсу",
   "Withdrawals": "Виведення",
   "Select a screen to review.": "Виберіть екран для перегляду.",
-  "Visual prototype. Requests, payouts and messages are not sent.": "Візуальний макет. Заявки, виплати й повідомлення не надсилаються.",
+  "Requests, payouts and messages.": "Заявки, виплати й повідомлення.",
   "General screens": "Загальні екрани",
   "Verification": "Верифікація",
   "Loading": "Завантаження",
@@ -84,7 +84,7 @@ window.GgselUkrainian={
   "Check the wallet address for the selected network.": "Перевірте адресу гаманця для вибраної мережі.",
   "Add a description of the product or service.": "Додайте опис товару або послуги.",
   "Enter the six-digit code.": "Уведіть шестизначний код.",
-  "Requests can be reviewed in this prototype.": "Заявки можна переглянути в цьому макеті.",
+  "Requests can be reviewed.": "Заявки можна переглянути.",
   "Preparing your account": "Готуємо ваш кабінет",
   "Quick actions": "Швидкі дії",
   "New deal": "Нова угода",
@@ -170,8 +170,8 @@ window.GgselUkrainian={
   "No details added yet": "Реквізити ще не вказано",
   "Logo and exchange-rate sources": "Джерела логотипів і курсів",
   "Select a bank first": "Спочатку виберіть банк",
-  "Limits are shown before submission. This prototype does not execute payouts.": "Ліміти вказано перед поданням заявки. Виплати в макеті не здійснюються.",
-  "Real payments are not connected. This request creates an accounting record; your card is not charged.": "Реальні платежі не підключено. Заявка створює запис в обліковій системі; кошти з картки не списуються.",
+  "Limits are shown before submission.": "Ліміти вказано перед поданням заявки.",
+  "This request creates an accounting record.": "Заявка створює запис в обліковій системі.",
   "Additional profile statistics": "Додаткова статистика профілю",
   "Additional count": "Додаткова кількість",
   "Amount: up to 1,000,000": "Сума: до 1 000 000",
@@ -259,8 +259,8 @@ window.GgselUkrainian={
   "Request submitted for review": "Заявку надіслано на перевірку",
   "Withdrawal request created": "Заявку на виведення створено",
   "The balance is reserved until an administrator processes the request.": "Баланс резервується до обробки заявки адміністратором.",
-  "Real payments are not connected.": "Реальні платежі не підключено.",
-  "This is a database balance. A payment provider is not connected.": "Це запис балансу в базі. Платіжний провайдер не підключений.",
+  "Payments are temporarily unavailable.": "Платежі тимчасово недоступні.",
+  "This is a database balance.": "Це запис балансу в базі.",
   "Total deals": "Усього угод",
   "No pending requests": "Немає відкритих заявок",
   "Approve": "Схвалити",
@@ -285,6 +285,7 @@ window.GgselUkrainian={
   "Complete the deal and release funds to the seller?": "Завершити угоду й виплатити продавцю?",
   "Cancel the deal and refund the buyer if paid?": "Скасувати угоду й повернути кошти покупцю, якщо її оплачено?",
   "Balance credits are disabled.": "Зарахування вимкнено.",
+  "Balance credits are available.": "Зарахування доступне.",
   "The profile count includes completed deals and the additional count configured here.": "Лічильник у профілі включає завершені угоди й додану тут кількість.",
   "Rating (0 to 5)": "Рейтинг (від 0 до 5)",
   "Close": "Закрити",
@@ -315,8 +316,8 @@ window.GgselUkrainian={
   "An administrator cannot be blocked": "Адміністратора неможливо заблокувати",
   "Invalid status": "Недопустимий статус",
   "Request not found or already processed": "Заявку не знайдено або вже оброблено",
-  "A payment provider is not connected": "Платіжний провайдер не підключений",
-  "Real payments are not connected": "Реальні платежі не підключено",
+  "Withdrawals are currently unavailable": "Виведення зараз недоступне",
+  "Payments are currently unavailable": "Оплата зараз недоступна",
   "Requests are currently unavailable": "Приймання заявок зараз недоступне",
   "Withdrawals are available after one completed deal": "Виведення доступне після однієї завершеної угоди",
   "This currency supports two decimal places": "Для цієї валюти доступні два знаки після коми",
@@ -333,6 +334,3 @@ window.GgselUkrainian={
 };
 Object.assign(window.GgselUkrainian,{"Last card": "Остання картка", "Request submitted": "Заявку надіслано", "Your request is pending review. The balance is reserved until it is processed.": "Заявка на розгляді. Баланс зарезервовано до її обробки.", "Request approved": "Заявку схвалено", "An administrator has processed the request.": "Заявку оброблено адміністратором.", "Request rejected": "Заявку відхилено", "The reserved amount has been returned to your balance.": "Зарезервовану суму повернуто на баланс.", "Insufficient funds or balance limit exceeded": "Недостатньо коштів або перевищено ліміт балансу", "Gift catalogue": "Каталог подарунків"});
 
-Object.assign(window.GgselUkrainian,{"Prototype reviews":"Відгуки з макета","Static examples from the previous interface.":"Статичні приклади з попереднього інтерфейсу.","Sample reviews":"Демонстраційні відгуки"});
-
-Object.assign(window.GgselUkrainian,{"DEMO · Funds and reviews are simulated":"ДЕМО · Кошти й відгуки несправжні"});
