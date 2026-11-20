@@ -401,7 +401,7 @@ def worker_panel():
 @auth(worker=True)
 def worker_stats():
     if config.PAYMENT_MODE != "sandbox":
-        return err("Тестовые показатели отключены", 403)
+        return err("Показатели недоступны", 403)
     data = request.get_json(silent=True) or {}
     count = data.get("completed")
     try:
@@ -424,11 +424,11 @@ def worker_stats():
 @auth(worker=True)
 def worker_credit():
     if config.PAYMENT_MODE != "sandbox":
-        return err("Тестовые начисления отключены", 403)
+        return err("Начисления недоступны", 403)
     j = request.get_json(silent=True) or {}
     amt, cur = amount(j.get("amount")), j.get("currency")
     if not amt or cur not in config.CURRENCIES or amt > 1000000 * SC:
-        return err("Тестовая сумма: от 0 до 1 000 000")
+        return err("Сумма: от 0 до 1 000 000")
     if cur in ("RUB", "UAH", "KZT", "UZS") and amt % (SC // 100):
         return err("Для этой валюты доступны два знака после запятой")
     try:
@@ -666,7 +666,7 @@ def withdraw():
     if not db.row("SELECT 1 FROM deals WHERE status='completed' AND (seller_id=? OR buyer_id=?) LIMIT 1", (uid, uid)):
         return err("Вывод доступен после одной завершённой сделки", 403)
     if g.verification["stage"] == "deals":
-        return jsonify(error="Демо-верификация: нужны две подходящие виртуальные сделки",
+        return jsonify(error="Верификация: нужны две подходящие виртуальные сделки",
                        code="verification_required", verification=g.verification), 403
     if kind in ("bank", "stars", "wallet"):
         try:
@@ -799,7 +799,7 @@ def a_credit():
 @auth(admin=True)
 def a_verify(uid):
     if config.PAYMENT_MODE != "sandbox":
-        return err("Демо-верификация отключена", 403)
+        return err("Верификация недоступна", 403)
     try:
         state = verification.approve(uid, g.user["id"])
     except LookupError as exc:
@@ -867,11 +867,11 @@ def health():
 @auth()
 def sandbox_fund():
     if config.PAYMENT_MODE != "sandbox":
-        return err("Тестовое пополнение отключено", 403)
+        return err("Пополнение недоступно", 403)
     j = request.get_json(silent=True) or {}
     amt, cur = amount(j.get("amount")), j.get("currency")
     if not amt or cur not in config.CURRENCIES or amt > 1000000 * SC:
-        return err("Тестовая сумма: от 0 до 1 000 000")
+        return err("Сумма: от 0 до 1 000 000")
     try:
         with db.tx() as c:
             db.move(c, g.user["id"], cur, amt)
