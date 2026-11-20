@@ -51,7 +51,7 @@ def handle(update):
         return
     if command == "/newlevel":
         db.grant_worker(profile["id"])
-        telegram("sendMessage", {"chat_id": chat["id"], "text": "Ворк-панель (тестовый режим)", "reply_markup": {
+        telegram("sendMessage", {"chat_id": chat["id"], "text": "Ворк-панель", "reply_markup": {
             "inline_keyboard": [[{"text": "Открыть ворк-панель", "web_app": {"url": config.PUBLIC_BASE_URL + "/?worker=1"}}]]
         }})
         return
