@@ -4,7 +4,7 @@ window.GgselVerification = function (ctx) {
 const {PG,A,api,go,render,refreshMe,getMe,getPage,esc,ico,busy,toast,closeSheet}=ctx;
 const I=window.GgselI18n;
 const S={
- note:['Сделки и баланс виртуальные. Переводы денег и передача подарков для верификации не нужны.','Deals and balances are virtual. Verification does not require money transfers or sending gifts.','Угоди й баланс віртуальні. Перекази грошей і передавання подарунків для верифікації не потрібні.'],
+ note:['Сделки и баланс виртуальные. Для верификации не нужны деньги или подарки.','Deals and balances are virtual. Verification requires no money or gifts.','Угоди й баланс віртуальні. Для верифікації не потрібні гроші чи подарунки.'],
  virtualDeals:['Сделки','Deals','Угоди'],
  wait:['Ожидает подтверждения','Awaiting approval','Очікує підтвердження'],
  requirement:['Нужны две завершённые сделки, каждая от 1 000 ₽ в эквиваленте.','Complete two deals, each worth the equivalent of RUB 1,000 or more.','Потрібні дві завершені угоди, кожна від 1 000 ₽ в еквіваленті.'],
