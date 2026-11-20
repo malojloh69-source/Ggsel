@@ -376,7 +376,7 @@ const dealCard = d => {
   <div class="row mut" style="margin-top:6px"><span>Код ${esc(d.join_code||"—")}</span><b style="color:var(--ink)">${fm(d.amount, d.currency)}</b></div></div>`;
 };
 const reviewCard = r => `<div class="card"><div class="row"><div class="row" style="justify-content:flex-start"><div class="av">${esc((r.name.replace("@", "")[0] || "U").toUpperCase())}</div>
-  <div><b data-user-text>${esc(r.name)}</b>${r.source==="prototype" ? '<small class="mut" style="display:block;font-size:11px">Пример</small>' : ""}</div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p data-user-text>${esc(r.text)}</p>` : ""}</div>`;
+  <div><b data-user-text>${esc(r.name)}</b></div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p data-user-text>${esc(r.text)}</p>` : ""}</div>`;
 
 let prototypeReviewLoad = null;
 const loadPrototypeReviews = () => prototypeReviewLoad ||= fetch('/static/prototype-reviews.json')
@@ -385,14 +385,14 @@ const loadPrototypeReviews = () => prototypeReviewLoad ||= fetch('/static/protot
   .catch(() => { prototypeReviewLoad = null; return []; });
 PG.home = async () => {
   const [h, prototypeReviews] = await Promise.all([api("/home"),loadPrototypeReviews(),refreshMe()]);
-  const reviews=[...h.reviews,...prototypeReviews];
+  const reviews=h.reviews;
   return `<button class="hero-banner" data-act="new" aria-label="Создать сделку"><img src="/static/assets/ggsell-p2p-banner.webp" alt="GG SELL — P2P-сделки в Telegram. Создавайте сделки и следите за каждым этапом." loading="eager"></button>
   <h3>Быстрые действия</h3><div class="qa"><button data-act="new"><i>${ico("plus")}</i>Новая сделка</button><button data-act="joinsheet"><i>${ico("box")}</i>Вступить в<br>сделку</button><button data-act="tab" data-arg="deals"><i>${ico("gem")}</i>Мои сделки</button></div>
   <div class="card balance-card"><div class="mut">Ваш баланс</div><div class="big" id="balv">${fmBalance(me.balances[cur],cur)}</div>
   <div class="chips" id="curs">${CUR.map(c=>`<button class="chip ${c===cur?"on":""}" data-act="cur" data-arg="${c}">${c}</button>`).join("")}</div></div>
   <h3>Последние сделки<button class="text-button" data-act="tab" data-arg="deals">Все</button></h3><div id="recent-deals">${h.deals.length?`<div class="list">${h.deals.map(dealCard).join("")}</div>`:empty(ico("bag")+"<p>У вас пока нет сделок</p>")}</div>
   <h3>Каталог подарков<span class="live" id="live-state">● LIVE</span></h3><div id="live-feed">${catalogCards()}</div>
-  <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${reviews.length?reviews.map(reviewCard).join(""):empty("Отзывов пока нет")}</div>`;
+  <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${reviews.length?reviews.map(reviewCard).join(""):""}${prototypeReviews.length?'<p class="mut" style="font-size:11px;margin:9px 0">Примеры отзывов — не отзывы пользователей</p>'+prototypeReviews.map(reviewCard).join(""):""}${!reviews.length&&!prototypeReviews.length?empty("Отзывов пока нет"):""}</div>`;
 };
 
 PG.deals = async (f = "all") => {
