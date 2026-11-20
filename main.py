@@ -36,7 +36,7 @@ LOG = logging.getLogger(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
 ASSETS = {"style.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.mp4",
           "payouts.js", "payouts.css", "i18n.js", "i18n-uk.js", "banks.json",
-          "verification.js", "verification.css"}
+          "verification.js", "verification.css", "prototype-reviews.json"}
 db.init()
 
 SC = db.SCALE

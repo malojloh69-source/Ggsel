@@ -17,7 +17,7 @@ const S={
  equivalents:['Виртуальные эквиваленты','Virtual equivalents','Віртуальні еквіваленти'],
  equivalentsNote:['Фиксированные значения из макета для одной виртуальной сделки.','Fixed prototype values for one virtual deal.','Фіксовані значення з макета для однієї віртуальної угоди.'],
  done:['Верификация подтверждена','Verification approved','Верифікацію підтверджено'],
- doneCopy:['Оба этапа пройдены. Доступ восстановлен.','Both steps are complete. Access has been restored.','Обидва етапи пройдено. Доступ відновлено.'],
+ doneCopy:['Проверка завершена. Доступ восстановлен.','Verification is complete. Access has been restored.','Перевірку завершено. Доступ відновлено.'],
  admin:['Демо-верификация','Demo verification','Демо-верифікація'],
  qualified:['Подходящие виртуальные сделки','Qualifying virtual deals','Відповідні віртуальні угоди'],
  approve:['Подтвердить верификацию','Approve verification','Підтвердити верифікацію'],
@@ -27,7 +27,6 @@ const tr=key=>S[key][{ru:0,en:1,uk:2}[I.lang]];
 const note=()=>`<aside class="verification-demo" role="note"><b>${tr('demo')}</b><span>${tr('note')}</span></aside>`;
 const video=name=>`<video class="anim verification-animation" autoplay loop muted playsinline preload="metadata" aria-hidden="true" src="/static/assets/animations/${name}.webm"></video>`;
 const title=()=>`<h1>${I.t('verification')}</h1>`;
-const phase=s=>`<ol class="verification-phases"><li class="${s.stage==='deals'||s.stage==='none'?'current':'passed'}">1. ${tr('virtualDeals')}</li><li class="${s.stage==='support'?'current':s.stage==='verified'?'passed':''}">2. ${I.t('supportCheck')}</li></ol>`;
 const status=()=>getMe()?.verification;
 const pageNames=new Set(['verification','verification-currencies']);
 function screen(s){
@@ -35,7 +34,7 @@ function screen(s){
  const done=s.stage==='verified'||s.stage==='exempt';
  const support=s.stage==='support';
  const count=Math.min(s.qualified_deals,2);
- return `<section class="verification-page">${!support?`<button class="back" data-act="back">${ico('back')}${I.t('back')}</button>`:''}${title()}${note()}${phase(s)}<div class="card center verification-card">
+ return `<section class="verification-page">${!support?`<button class="back" data-act="back">${ico('back')}${I.t('back')}</button>`:''}${title()}${note()}<div class="card center verification-card">
  ${video(done?'success':'warning')}<h2>${done?tr('done'):support?tr('locked'):I.t('dealVerification')}</h2>
  <p class="mut">${done?tr('doneCopy'):support?tr('copy'):tr('requirement')}</p>
  ${!done&&!support?`<div class="row"><span>${tr('qualified')}</span><b>${count} / 2</b></div><progress max="2" value="${count}" aria-label="${esc(tr('qualified'))}"></progress><p class="hint">${tr('after')}</p><button class="btn" disabled>${I.t('withdrawUnavailable')}</button><button class="btn s" data-act="go" data-arg="verification-currencies">${I.t('otherCurrencies')}</button><button class="text-button verification-return" data-act="tab" data-arg="deals">${I.t('myDeals')}</button>`:''}

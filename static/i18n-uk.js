@@ -332,3 +332,5 @@ window.GgselUkrainian={
   "Add recipient details for this method first": "Спочатку додайте реквізити для цього способу"
 };
 Object.assign(window.GgselUkrainian,{"Last card": "Остання картка", "Request submitted": "Заявку надіслано", "Your request is pending review. The balance is reserved until it is processed.": "Заявка на розгляді. Баланс зарезервовано до її обробки.", "Request approved": "Заявку схвалено", "An administrator has processed the request.": "Заявку оброблено адміністратором.", "Request rejected": "Заявку відхилено", "The reserved amount has been returned to your balance.": "Зарезервовану суму повернуто на баланс.", "Insufficient funds or balance limit exceeded": "Недостатньо коштів або перевищено ліміт балансу", "Gift catalogue": "Каталог подарунків"});
+
+Object.assign(window.GgselUkrainian,{"Prototype reviews":"Відгуки з макета","Static examples from the previous interface.":"Статичні приклади з попереднього інтерфейсу."});

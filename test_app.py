@@ -15,7 +15,7 @@ class DealTests(unittest.TestCase):
  def setUp(self):
   self.c=app.test_client()
   with db.tx() as c:
-   for table in ['verification_approvals','verification_notices','deal_events','reviews','site_reviews','worker_reviews','work_reviews','worker_stats','join_attempts','promo_claims','payout_requests','payout_recipients','txs','requisites','deals','balances','workers','admins','users']:
+   for table in ['verification_approvals','verification_notices','verification_first_notices','deal_events','reviews','site_reviews','worker_reviews','work_reviews','worker_stats','join_attempts','promo_claims','payout_requests','payout_recipients','txs','requisites','deals','balances','workers','admins','users']:
     c.execute('DELETE FROM '+table)
   db.grant_admin(1)
   config.DEV_MODE=True;config.PAYMENT_MODE='sandbox'

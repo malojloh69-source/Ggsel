@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS workers(user_id INTEGER PRIMARY KEY, granted_at INTEG
 CREATE TABLE IF NOT EXISTS verification_approvals(user_id INTEGER PRIMARY KEY,
   approved_by INTEGER NOT NULL, approved_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS verification_notices(user_id INTEGER PRIMARY KEY, created INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS verification_first_notices(user_id INTEGER PRIMARY KEY, created INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS worker_stats(user_id INTEGER PRIMARY KEY,
   completed_count INTEGER NOT NULL CHECK(completed_count BETWEEN 0 AND 1000000),
   rating_tenths INTEGER NOT NULL CHECK(rating_tenths BETWEEN 0 AND 50));

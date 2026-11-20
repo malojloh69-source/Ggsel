@@ -42,11 +42,13 @@ async function main() {
     assert.match(first, /progress max="2" value="1"/);
     assert.match(first, /data-arg="verification-currencies"/);
     assert.doesNotMatch(first, /supportCheck/);
+    assert.doesNotMatch(first, /verification-phases|<ol|<li/);
     assert.doesNotMatch(UI.admin(me.verification, 2), /data-act="averify"/);
     me.verification = {...state, stage: 'support', locked: true, qualified_deals: 2};
     const second = await PG.verification();
     assert.match(second, /class="verification-demo"/);
     assert.match(second, /data-act="support"/);
+    assert.doesNotMatch(second, /verification-phases|<ol|<li/);
     assert.doesNotMatch(second, /<progress/);
     assert.match(UI.admin(me.verification, 2), /data-act="averify" data-arg="2"/);
     assert.match(await PG['verification-currencies'](), /verification-contact/);
@@ -57,6 +59,7 @@ async function main() {
     const third = await PG.verification();
     assert.match(third, /class="verification-demo"/);
     assert.match(third, /data-arg="payout-methods"/);
+    assert.doesNotMatch(third, /Оба этапа|Both steps|Обидва етапи/);
     assert.equal(await PG['payout-stars'](), '<form>stars</form>');
     assert.doesNotMatch(UI.admin(me.verification, 2), /data-act="averify"/);
     assert.equal(await PG.home(), '<main>home</main>');

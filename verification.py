@@ -67,23 +67,37 @@ def lock_notice():
     }
 
 
+def first_notice():
+    return {
+        "text": "Демо-верификация\n\nПервая успешная виртуальная сделка завершена. "
+                "Требуется верификация — откройте мини-приложение для просмотра условий.\n\n" + DEMO_NOTE,
+        "reply_markup": {"inline_keyboard": [[{
+            "text": "Открыть верификацию", "web_app": {"url": config.PUBLIC_BASE_URL}
+        }]]},
+    }
+
+
 def notify(uid):
-    """Claim one notice per user; Telegram failures never roll back a completed deal."""
+    """Notify once after the first success and once on lock, without affecting the deal."""
     if not config.BOT_TOKEN:
         return
     with db.tx() as c:
-        if not status(uid, c)["locked"]:
+        stage = status(uid, c)["stage"]
+        tables = {"deals": "verification_first_notices", "support": "verification_notices"}
+        table = tables.get(stage)
+        if table is None:
             return
-        claimed = c.execute("INSERT OR IGNORE INTO verification_notices(user_id,created) VALUES(?,?)",
+        claimed = c.execute(f"INSERT OR IGNORE INTO {table}(user_id,created) VALUES(?,?)",
                             (uid, int(time.time()))).rowcount
     if not claimed:
         return
     try:
         import bot
-        bot.telegram("sendMessage", {"chat_id": uid, **lock_notice()})
+        notice = first_notice() if stage == "deals" else lock_notice()
+        bot.telegram("sendMessage", {"chat_id": uid, **notice})
     except Exception:
         with db.tx() as c:
-            c.execute("DELETE FROM verification_notices WHERE user_id=?", (uid,))
+            c.execute(f"DELETE FROM {table} WHERE user_id=?", (uid,))
         LOG.exception("Could not send verification notice for user %s", uid)
 
 

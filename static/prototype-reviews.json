@@ -1,0 +1,414 @@
+{
+  "source_commit": "08ec568be047afd3b9f7dc543b17bfd3d859ffe0",
+  "source_index_blob": "ef88c17cfc64247dd77ce96f8af945b05a91c077",
+  "reviews": [
+    {
+      "name": "@Алексей",
+      "rating": 5,
+      "text": "Нормально",
+      "source": "prototype"
+    },
+    {
+      "name": "@buyer_pro",
+      "rating": 5,
+      "text": "Всё четко,без скама",
+      "source": "prototype"
+    },
+    {
+      "name": "@thevlastov",
+      "rating": 5,
+      "text": "Красава не обманул",
+      "source": "prototype"
+    },
+    {
+      "name": "@pavel_msk",
+      "rating": 5,
+      "text": "Уже третья сделка, всё гладко",
+      "source": "prototype"
+    },
+    {
+      "name": "@bobofonw",
+      "rating": 3,
+      "text": "советую",
+      "source": "prototype"
+    },
+    {
+      "name": "@VajnixyXD",
+      "rating": 5,
+      "text": "поверил на слово, не наебал спасибо",
+      "source": "prototype"
+    },
+    {
+      "name": "@воздух я",
+      "rating": 5,
+      "text": "имба бляя",
+      "source": "prototype"
+    },
+    {
+      "name": "@gartechikq",
+      "rating": 4,
+      "text": "Норм но доверия не много даже после использования",
+      "source": "prototype"
+    },
+    {
+      "name": "@bododods",
+      "rating": 5,
+      "text": "Лайк, не кинули",
+      "source": "prototype"
+    },
+    {
+      "name": "@awangardiks",
+      "rating": 5,
+      "text": "Сервис пушка",
+      "source": "prototype"
+    },
+    {
+      "name": "@FunPayHold",
+      "rating": 5,
+      "text": "Ну вроде не кинули, деньги заплатили",
+      "source": "prototype"
+    },
+    {
+      "name": "@cryptowertty",
+      "rating": 5,
+      "text": "нормально",
+      "source": "prototype"
+    },
+    {
+      "name": "@tupoy_genniy",
+      "rating": 5,
+      "text": "заебок",
+      "source": "prototype"
+    },
+    {
+      "name": "@buyer_pro",
+      "rating": 5,
+      "text": "не наеб",
+      "source": "prototype"
+    },
+    {
+      "name": "@buyer_pro",
+      "rating": 5,
+      "text": "не наеб",
+      "source": "prototype"
+    },
+    {
+      "name": "@buyer_pro",
+      "rating": 5,
+      "text": "афигеннг спасибо продал нфт",
+      "source": "prototype"
+    },
+    {
+      "name": "@buyer_pro",
+      "rating": 5,
+      "text": "кайф",
+      "source": "prototype"
+    },
+    {
+      "name": "@stepan_msc",
+      "rating": 5,
+      "text": "Лучший сервис для сделок с подарками",
+      "source": "prototype"
+    },
+    {
+      "name": "@kate_moon",
+      "rating": 5,
+      "text": "Комиссия маленькая, всё прозрачно",
+      "source": "prototype"
+    },
+    {
+      "name": "@buyer_pro",
+      "rating": 5,
+      "text": "топчик",
+      "source": "prototype"
+    },
+    {
+      "name": "@danyasssjer",
+      "rating": 5,
+      "text": "Быстро и за норм прайс+реп",
+      "source": "prototype"
+    },
+    {
+      "name": "@lovemybaby",
+      "rating": 5,
+      "text": "Сделка прошла отлично, рекомендую",
+      "source": "prototype"
+    },
+    {
+      "name": "@kirill_tg",
+      "rating": 5,
+      "text": "Гарант всё чётко проверил, спасибо!",
+      "source": "prototype"
+    },
+    {
+      "name": "@sasha_nft",
+      "rating": 5,
+      "text": "Скинул подарок, деньги пришли почти сразу",
+      "source": "prototype"
+    },
+    {
+      "name": "@egorka_spb",
+      "rating": 5,
+      "text": "Сделка прошла отлично, рекомендую",
+      "source": "prototype"
+    },
+    {
+      "name": "@egorka_spb",
+      "rating": 4,
+      "text": "нормально",
+      "source": "prototype"
+    },
+    {
+      "name": "@maxpower",
+      "rating": 4,
+      "text": "Уже третья сделка, всё гладко",
+      "source": "prototype"
+    },
+    {
+      "name": "@sweetdreamz",
+      "rating": 5,
+      "text": "Оперативно, никаких задержек",
+      "source": "prototype"
+    },
+    {
+      "name": "@sweetdreamz",
+      "rating": 5,
+      "text": "Отличная поддержка, помогли разобраться",
+      "source": "prototype"
+    },
+    {
+      "name": "@tonlover",
+      "rating": 5,
+      "text": "Комиссия маленькая, всё прозрачно",
+      "source": "prototype"
+    },
+    {
+      "name": "@miloradik",
+      "rating": 5,
+      "text": "Комиссия маленькая, всё прозрачно",
+      "source": "prototype"
+    },
+    {
+      "name": "@roman_x",
+      "rating": 5,
+      "text": "Комиссия маленькая, всё прозрачно",
+      "source": "prototype"
+    },
+    {
+      "name": "@egorka_spb",
+      "rating": 5,
+      "text": "Скинул подарок, деньги пришли почти сразу",
+      "source": "prototype"
+    },
+    {
+      "name": "@kate_moon",
+      "rating": 5,
+      "text": "Гарант всё чётко проверил, спасибо!",
+      "source": "prototype"
+    },
+    {
+      "name": "@vano228",
+      "rating": 5,
+      "text": "Красавцы, всё по-честному",
+      "source": "prototype"
+    },
+    {
+      "name": "@maxpower",
+      "rating": 4,
+      "text": "Просто и понятно, разобрался за минуту",
+      "source": "prototype"
+    },
+    {
+      "name": "@kirill_tg",
+      "rating": 5,
+      "text": "Ахуенный ботик, быстро провели сделку, советую всем",
+      "source": "prototype"
+    },
+    {
+      "name": "@roman_x",
+      "rating": 5,
+      "text": "Отличная поддержка, помогли разобраться",
+      "source": "prototype"
+    },
+    {
+      "name": "@anyuta",
+      "rating": 5,
+      "text": "Продал подарок за 5 минут, супер сервис",
+      "source": "prototype"
+    },
+    {
+      "name": "@sasha_nft",
+      "rating": 5,
+      "text": "Отличная поддержка, помогли разобраться",
+      "source": "prototype"
+    },
+    {
+      "name": "@denchik",
+      "rating": 5,
+      "text": "Комиссия маленькая, всё прозрачно",
+      "source": "prototype"
+    },
+    {
+      "name": "@kirill_tg",
+      "rating": 5,
+      "text": "Скинул подарок, деньги пришли почти сразу",
+      "source": "prototype"
+    },
+    {
+      "name": "@miloradik",
+      "rating": 5,
+      "text": "Лучший сервис для сделок с подарками",
+      "source": "prototype"
+    },
+    {
+      "name": "@аноним",
+      "rating": 5,
+      "text": "Продал подарок за 5 минут, супер сервис",
+      "source": "prototype"
+    },
+    {
+      "name": "@dashka99",
+      "rating": 5,
+      "text": "Реально безопасно, гарант не подведёт",
+      "source": "prototype"
+    },
+    {
+      "name": "@miloradik",
+      "rating": 4,
+      "text": "Сработало, но не сразу понял как выводить",
+      "source": "prototype"
+    },
+    {
+      "name": "@artem_pro",
+      "rating": 5,
+      "text": "Красавцы, всё по-честному",
+      "source": "prototype"
+    },
+    {
+      "name": "@zaycev_go",
+      "rating": 5,
+      "text": "Просто и понятно, разобрался за минуту",
+      "source": "prototype"
+    },
+    {
+      "name": "@artem_pro",
+      "rating": 5,
+      "text": "Гарант всё чётко проверил, спасибо!",
+      "source": "prototype"
+    },
+    {
+      "name": "@nikita_spb",
+      "rating": 5,
+      "text": "Гарант на связи 24/7, реально помогают",
+      "source": "prototype"
+    },
+    {
+      "name": "@sasha_nft",
+      "rating": 5,
+      "text": "Сделка прошла отлично, рекомендую",
+      "source": "prototype"
+    },
+    {
+      "name": "@аноним",
+      "rating": 5,
+      "text": "Просто и понятно, разобрался за минуту",
+      "source": "prototype"
+    },
+    {
+      "name": "@egorka_spb",
+      "rating": 5,
+      "text": "Гарант всё чётко проверил, спасибо!",
+      "source": "prototype"
+    },
+    {
+      "name": "@zaycev_go",
+      "rating": 4,
+      "text": "Всё ок, но хотелось бы больше валют",
+      "source": "prototype"
+    },
+    {
+      "name": "@аноним",
+      "rating": 5,
+      "text": "Быстро и без проблем, деньги пришли сразу",
+      "source": "prototype"
+    },
+    {
+      "name": "@giftmaster",
+      "rating": 5,
+      "text": "Отличная поддержка, помогли разобраться",
+      "source": "prototype"
+    },
+    {
+      "name": "@kate_moon",
+      "rating": 5,
+      "text": "Уже не первый раз пользуюсь, всё стабильно",
+      "source": "prototype"
+    },
+    {
+      "name": "@kate_moon",
+      "rating": 5,
+      "text": "Просто и понятно, разобрался за минуту",
+      "source": "prototype"
+    },
+    {
+      "name": "@bogdan_007",
+      "rating": 5,
+      "text": "Скинул подарок, деньги пришли почти сразу",
+      "source": "prototype"
+    },
+    {
+      "name": "@dashka99",
+      "rating": 4,
+      "text": "Всё ок, но хотелось бы больше валют",
+      "source": "prototype"
+    },
+    {
+      "name": "@roman_x",
+      "rating": 5,
+      "text": "Быстро и без проблем, деньги пришли сразу",
+      "source": "prototype"
+    },
+    {
+      "name": "@miloradik",
+      "rating": 5,
+      "text": "Оперативно, никаких задержек",
+      "source": "prototype"
+    },
+    {
+      "name": "@lovemybaby",
+      "rating": 4,
+      "text": "Всё как и обещали, доволен",
+      "source": "prototype"
+    },
+    {
+      "name": "@lera_v",
+      "rating": 5,
+      "text": "Всё как и обещали, доволен",
+      "source": "prototype"
+    },
+    {
+      "name": "@artem_pro",
+      "rating": 5,
+      "text": "Скинул подарок, деньги пришли почти сразу",
+      "source": "prototype"
+    },
+    {
+      "name": "@dashka99",
+      "rating": 4,
+      "text": "Нормально, но пришлось подождать пару минут",
+      "source": "prototype"
+    },
+    {
+      "name": "@quickbuyer",
+      "rating": 5,
+      "text": "Понятный интерфейс и удобные статусы сделки.",
+      "source": "prototype"
+    },
+    {
+      "name": "@neontrade",
+      "rating": 5,
+      "text": "Очень удобный сервис, провожу сделки не первый раз, проблем не было.",
+      "source": "prototype"
+    }
+  ]
+}

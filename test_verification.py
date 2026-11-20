@@ -122,6 +122,47 @@ class VerificationTests(unittest.TestCase):
         self.assertEqual(self.req('/api/me', 2).status_code, 403)
         self.assertTrue(db.row('SELECT blocked FROM users WHERE id=2')['blocked'])
 
+    def test_first_success_notice_is_once_and_separate_from_lock_notice(self):
+        # Every successful virtual deal starts verification, including one below the threshold.
+        self.seed(units=125 * db.SCALE)
+        with patch.object(config, 'BOT_TOKEN', 'test-token'), patch.object(bot, 'telegram') as send:
+            verification.notify(2)
+            verification.notify(2)
+            self.assertEqual(send.call_count, 1)
+            self.assertIn('Требуется верификация', send.call_args.args[1]['text'])
+            self.assertIn('Демо', send.call_args.args[1]['text'])
+            self.assertNotIn('Доступ временно ограничен', send.call_args.args[1]['text'])
+            self.assertEqual(verification.status(2)['completed_deals'], 1)
+            self.assertFalse(verification.status(2)['locked'])
+            db.init()
+            verification.notify(2)
+            self.assertEqual(send.call_count, 1)
+            self.seed()
+            verification.notify(2)
+            self.assertEqual(send.call_count, 1)
+            self.seed()
+            verification.notify(2)
+            verification.notify(2)
+            self.assertEqual(send.call_count, 2)
+            self.assertIn('Доступ временно ограничен', send.call_args.args[1]['text'])
+        self.assertEqual(db.row('SELECT COUNT(*) n FROM verification_first_notices')['n'], 1)
+        self.assertEqual(db.row('SELECT COUNT(*) n FROM verification_notices')['n'], 1)
+
+    def test_first_notice_failure_is_retryable_and_staff_are_exempt(self):
+        self.seed()
+        with patch.object(config, 'BOT_TOKEN', 'test-token'), patch.object(bot, 'telegram', side_effect=RuntimeError('offline')):
+            with self.assertLogs('verification', level='ERROR'):
+                verification.notify(2)
+        self.assertEqual(db.rows('SELECT * FROM verification_first_notices'), [])
+        with patch.object(config, 'BOT_TOKEN', 'test-token'), patch.object(bot, 'telegram') as send:
+            verification.notify(2)
+            self.assertEqual(send.call_count, 1)
+            self.seed(uid=3)
+            db.grant_worker(3)
+            verification.notify(3)
+            verification.notify(1)
+            self.assertEqual(send.call_count, 1)
+
     def test_notices_are_demo_labelled_once_and_failed_delivery_can_retry(self):
         self.seed()
         self.seed()

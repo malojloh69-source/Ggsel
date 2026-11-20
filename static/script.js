@@ -378,8 +378,14 @@ const dealCard = d => {
 const reviewCard = r => `<div class="card"><div class="row"><div class="row" style="justify-content:flex-start"><div class="av">${esc((r.name.replace("@", "")[0] || "U").toUpperCase())}</div>
   <div><b data-user-text>${esc(r.name)}</b></div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p data-user-text>${esc(r.text)}</p>` : ""}</div>`;
 
+let prototypeReviewLoad = null;
+const loadPrototypeReviews = () => prototypeReviewLoad ||= fetch('/static/prototype-reviews.json')
+  .then(response => { if (!response.ok) throw new Error('Review archive unavailable'); return response.json(); })
+  .then(data => Array.isArray(data.reviews) ? data.reviews : [])
+  .catch(() => { prototypeReviewLoad = null; return []; });
+const prototypeReviewSection = reviews => reviews.length ? `<h3>Отзывы из макета</h3><p class="mut">Статические примеры из предыдущего интерфейса.</p><div class="reviews-list" data-user-text>${reviews.map(reviewCard).join("")}</div>` : "";
 PG.home = async () => {
-  const [h] = await Promise.all([api("/home"),refreshMe()]);
+  const [h, prototypeReviews] = await Promise.all([api("/home"),loadPrototypeReviews(),refreshMe()]);
   const reviews=h.reviews;
   return `<button class="hero-banner" data-act="new" aria-label="Создать сделку"><img src="/static/assets/ggsell-p2p-banner.webp" alt="GG SELL — P2P-сделки в Telegram. Создавайте сделки и следите за каждым этапом." loading="eager"></button>
   <h3>Быстрые действия</h3><div class="qa"><button data-act="new"><i>${ico("plus")}</i>Новая сделка</button><button data-act="joinsheet"><i>${ico("box")}</i>Вступить в<br>сделку</button><button data-act="tab" data-arg="deals"><i>${ico("gem")}</i>Мои сделки</button></div>
@@ -387,7 +393,7 @@ PG.home = async () => {
   <div class="chips" id="curs">${CUR.map(c=>`<button class="chip ${c===cur?"on":""}" data-act="cur" data-arg="${c}">${c}</button>`).join("")}</div></div>
   <h3>Последние сделки<button class="text-button" data-act="tab" data-arg="deals">Все</button></h3><div id="recent-deals">${h.deals.length?`<div class="list">${h.deals.map(dealCard).join("")}</div>`:empty(ico("bag")+"<p>У вас пока нет сделок</p>")}</div>
   <h3>Каталог подарков<span class="live" id="live-state">● LIVE</span></h3><div id="live-feed">${catalogCards()}</div>
-  <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${reviews.length?reviews.map(reviewCard).join(""):empty("Отзывов пока нет")}</div>`;
+  <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${reviews.length?reviews.map(reviewCard).join(""):empty("Отзывов пока нет")}</div>${prototypeReviewSection(prototypeReviews)}`;
 };
 
 PG.deals = async (f = "all") => {

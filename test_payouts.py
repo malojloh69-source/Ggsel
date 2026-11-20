@@ -121,6 +121,13 @@ class PayoutTests(unittest.TestCase):
             self.assertEqual(client.post('/api/txs/withdraw', json=[1], headers={'X-Dev-User': '2'}).status_code, 400)
 
     def test_public_assets_are_local_and_whitelisted(self):
+        with self.c.get('/static/prototype-reviews.json') as response:
+            self.assertEqual(response.status_code, 200)
+            archive = response.json
+            self.assertEqual(archive['source_index_blob'], 'ef88c17cfc64247dd77ce96f8af945b05a91c077')
+            self.assertEqual(len(archive['reviews']), 68)
+            self.assertEqual(archive['reviews'][0]['text'], 'Нормально')
+            self.assertTrue(all(review['source'] == 'prototype' for review in archive['reviews']))
         for bank in payouts.BANKS:
             with self.c.get('/static/' + bank['icon']) as response:
                 self.assertEqual(response.status_code, 200)
