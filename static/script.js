@@ -425,7 +425,7 @@ PG.home = async () => {
     <div class="chips" id="curs">${CUR.map(c=>`<button class="chip currency-choice ${c===cur?"on":""}" data-act="cur" data-arg="${c}">${currencyIcon(c)}${currencyLabel(c)}</button>`).join("")}</div>
   </div>
   <h3>Последние сделки<button class="text-button" data-act="tab" data-arg="deals">Все</button></h3><div id="recent-deals">${h.deals.length?`<div class="list">${h.deals.map(dealCard).join("")}</div>`:empty(ico("bag")+"<p>У вас пока нет сделок</p>")}</div>
-  <h3>Каталог подарков<span class="live" id="live-state">● LIVE</span></h3>
+  <h3>Live NFT сделки<span class="live" id="live-state">● LIVE</span></h3>
   <div id="live-feed">${catalogCards()}</div>
   <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${reviews.length?reviews.map(reviewCard).join(""):""}${prototypeReviews.length?prototypeReviews.map(reviewCard).join(""):""}${!reviews.length&&!prototypeReviews.length?empty("Отзывов пока нет"):""}</div>`;
 };
@@ -678,7 +678,7 @@ function initialFeed() {
   try { sessionStorage.setItem("nft_feed_previous",JSON.stringify(items.map(x=>x.key))); } catch(e) { /* The gallery still works without storage. */ }
   return items;
 }
-const catalogCards = () => `<div class="gift-track" aria-label="Каталог подарков">${(feedItems ||= initialFeed()).map(giftCard).join("")}</div>`;
+const catalogCards = () => `<div class="gift-track" aria-label="Live NFT сделки">${(feedItems ||= initialFeed()).map(giftCard).join("")}</div>`;
 function updateGiftPlayback() {
   let playing=0;
   document.querySelectorAll(".gift-card lottie-player").forEach(player=>{

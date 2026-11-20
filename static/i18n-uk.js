@@ -183,7 +183,7 @@ window.GgselUkrainian={
   "Recent reviews": "Останні відгуки",
   "+ Write a review": "+ Написати відгук",
   "You have no deals yet": "У вас поки немає угод",
-  "Gift catalogue": "Каталог подарунків",
+  "Live NFT deals": "Live NFT угоди",
   "No reviews yet": "Відгуків поки немає",
   "I am the seller": "Я продавець",
   "I am the buyer": "Я покупець",
@@ -331,5 +331,5 @@ window.GgselUkrainian={
   "Invalid payment details": "Некоректні реквізити",
   "Add recipient details for this method first": "Спочатку додайте реквізити для цього способу"
 };
-Object.assign(window.GgselUkrainian,{"Last card": "Остання картка", "Request submitted": "Заявку надіслано", "Your request is pending review. The balance is reserved until it is processed.": "Заявка на розгляді. Баланс зарезервовано до її обробки.", "Request approved": "Заявку схвалено", "An administrator has processed the request.": "Заявку оброблено адміністратором.", "Request rejected": "Заявку відхилено", "The reserved amount has been returned to your balance.": "Зарезервовану суму повернуто на баланс.", "Insufficient funds or balance limit exceeded": "Недостатньо коштів або перевищено ліміт балансу", "Gift catalogue": "Каталог подарунків"});
+Object.assign(window.GgselUkrainian,{"Last card": "Остання картка", "Request submitted": "Заявку надіслано", "Your request is pending review. The balance is reserved until it is processed.": "Заявка на розгляді. Баланс зарезервовано до її обробки.", "Request approved": "Заявку схвалено", "An administrator has processed the request.": "Заявку оброблено адміністратором.", "Request rejected": "Заявку відхилено", "The reserved amount has been returned to your balance.": "Зарезервовану суму повернуто на баланс.", "Insufficient funds or balance limit exceeded": "Недостатньо коштів або перевищено ліміт балансу", "Live NFT deals": "Live NFT угоди"});
 
