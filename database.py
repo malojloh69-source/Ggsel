@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS join_attempts(user_id INTEGER PRIMARY KEY, window_sta
 CREATE TABLE IF NOT EXISTS txs(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, type TEXT, currency TEXT,
   amount INTEGER, status TEXT, details TEXT, ref TEXT, created INTEGER);
 CREATE TABLE IF NOT EXISTS requisites(user_id INTEGER, kind TEXT, value TEXT, PRIMARY KEY(user_id,kind));
+CREATE TABLE IF NOT EXISTS payout_recipients(user_id INTEGER NOT NULL, method TEXT NOT NULL,
+  currency TEXT NOT NULL, network TEXT NOT NULL DEFAULT '', details TEXT NOT NULL,
+  PRIMARY KEY(user_id,method,currency,network));
+CREATE TABLE IF NOT EXISTS payout_requests(user_id INTEGER NOT NULL, request_key TEXT NOT NULL,
+  tx_id INTEGER NOT NULL REFERENCES txs(id), fingerprint TEXT NOT NULL,
+  PRIMARY KEY(user_id,request_key));
 CREATE TABLE IF NOT EXISTS reviews(id INTEGER PRIMARY KEY AUTOINCREMENT, deal_id TEXT, author_id INTEGER,
   target_id INTEGER, rating INTEGER, text TEXT, created INTEGER, UNIQUE(deal_id,author_id));
 CREATE TABLE IF NOT EXISTS site_reviews(author_id INTEGER PRIMARY KEY, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
@@ -69,6 +75,7 @@ def init():
         if not any(col[1] == "join_code" for col in c.execute("PRAGMA table_info(deals)")):
             c.execute("ALTER TABLE deals ADD COLUMN join_code TEXT")
         c.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_deals_join_code ON deals(join_code)")
+        c.execute("UPDATE requisites SET value=substr(value,-4) WHERE kind='card' AND length(value)>4")
         for (did,) in c.execute("SELECT id FROM deals WHERE join_code IS NULL"):
             c.execute("UPDATE deals SET join_code=? WHERE id=?", (new_join_code(c), did))
         # Remove the named account's previously saved reviews without dropping any other data.

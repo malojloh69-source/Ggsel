@@ -15,7 +15,7 @@ class DealTests(unittest.TestCase):
  def setUp(self):
   self.c=app.test_client()
   with db.tx() as c:
-   for table in ['deal_events','reviews','site_reviews','worker_reviews','work_reviews','worker_stats','join_attempts','promo_claims','txs','requisites','deals','balances','workers','admins','users']:
+   for table in ['deal_events','reviews','site_reviews','worker_reviews','work_reviews','worker_stats','join_attempts','promo_claims','payout_requests','payout_recipients','txs','requisites','deals','balances','workers','admins','users']:
     c.execute('DELETE FROM '+table)
   db.grant_admin(1)
   config.DEV_MODE=True;config.PAYMENT_MODE='sandbox'
@@ -372,7 +372,7 @@ class DealTests(unittest.TestCase):
   r=self.c.get('/');self.assertEqual(r.status_code,200)
   self.assertIn(b'"preview": false',r.data)
   self.assertIn(b'static/style.css',r.data)
-  self.assertIn(b'static/script.js?v=20261001',r.data)
+  self.assertIn(b'static/script.js?v=20261120',r.data)
   self.assertNotIn(b'window.__PYTHON_CONFIG__',r.data)
   for name in ['script.js','style.css','brand.png','favicon.svg','welcome.mp4']:
    with self.c.get('/static/'+name) as response:

@@ -22,9 +22,9 @@ const NFT_RE = /^https:\/\/t\.me\/nft\/[A-Za-z0-9_]{2,64}-\d{1,12}$/;
 const TABMAP = { home: "home", deals: "deals", deal: "deals", intro: "deals", new: "deals", reqs: "reqs", profile: "profile", ops: "profile", support: "profile", admin: "profile", worker: "profile" };
 
 const ico = n => `<svg class="ic"><use href="#i-${n}"/></svg>`;
-const fm = (v, c) => `${Number(v).toLocaleString("ru-RU", { maximumFractionDigits: 8 })} ${SYM[c] || c}`;
-const fmBalance = (v, c) => `${Number(v).toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 8 })} ${SYM[c] || c}`;
-const dt = t => new Date(t * 1000).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const fm = (v, c) => `${Number(v).toLocaleString(window.GgselI18n?.locale || "ru-RU", { maximumFractionDigits: 8 })} ${SYM[c] || c}`;
+const fmBalance = (v, c) => `${Number(v).toLocaleString(window.GgselI18n?.locale || "ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 8 })} ${SYM[c] || c}`;
+const dt = t => new Date(t * 1000).toLocaleString(window.GgselI18n?.locale || "ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const sk = n => '<div class="sk"></div>'.repeat(n);
 const empty = t => `<div class="empty">${t}</div>`;
 const bk = `<button class="back" data-act="back">${ico("back")}Назад</button>`;
@@ -35,6 +35,7 @@ const mask = v => (v.length > 10 ? v.slice(0, 4) + " •••• " + v.slice(-4
 const view = $("#view");
 let me = null, cur = localStorage.getItem("deal_currency") || "RUB", page = ["home"], stack = [], tok = 0, sh = null;
 const A = {}, PG = {};
+let upgrade = null;
 
 // ------------------------------------------------------------ core helpers
 let DEMO = CFG.preview === true;
@@ -46,7 +47,7 @@ async function api(path, o = {}) {
     body: o.body ? JSON.stringify(o.body) : undefined,
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || "Ошибка " + r.status);
+  if (!r.ok) throw new Error(window.GgselI18n.text(j.error || "Ошибка " + r.status));
   return j;
 }
 // ------------------------------------------------------------ demo mode: backend in the browser (only when no server is reachable)
@@ -111,7 +112,7 @@ function demoRoute(path, o) {
     };
   }
   if (R === "sandbox" && s[1] === "fund") {
-    const a=num(b.amount); if(!a || a>1000000 || !CUR.includes(b.currency)) throw new Error("Тестовая сумма: до 1 000 000");
+    const a=num(b.amount); if(!a || a>1000000 || !CUR.includes(b.currency)) throw new Error("Сумма: до 1 000 000");
     mv(u,b.currency,a); tlog(u,"sandbox_credit",b.currency,a); return {ok:true};
   }
   if (R === "live") return {source:"preview",revision:DB.revision||0,server_time:now(),items:mine().filter(d=>d.status==="completed").flatMap(d=>d.nft.map(url=>{
@@ -244,11 +245,11 @@ const refreshMe = async () => {
 
 };
 function toast(m, bad) {
-  const t = $("#toast"); t.textContent = m; t.className = "show" + (bad ? " bad" : "");
+  const t = $("#toast"); t.textContent = window.GgselI18n.text(m); t.className = "show" + (bad ? " bad" : "");
   clearTimeout(toast.t); toast.t = setTimeout(() => (t.className = ""), 2600);
 }
 const haptic = t => { try { tg && tg.HapticFeedback.notificationOccurred(t); } catch (e) { } };
-const ask = m => new Promise(res => (tg && tg.initData && tg.showConfirm ? tg.showConfirm(m, res) : res(confirm(m))));
+const ask = message => {const m=window.GgselI18n.text(message);return new Promise(res => (tg && tg.initData && tg.showConfirm ? tg.showConfirm(m, res) : res(confirm(m))));};
 function copyText(v) {
   const done = () => toast("Скопировано");
   if (navigator.clipboard) navigator.clipboard.writeText(v).then(done, () => fb());
@@ -264,7 +265,7 @@ function sheet(html) {
   closeSheet();
   const s = document.createElement("div"); s.className = "sheet-wrap";
   s.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(html.replace(/<[^>]*>/g, " ").slice(0,90))}" tabindex="-1"><div class="grab"></div><button class="sheet-close" data-act="close" aria-label="Закрыть">×</button>${html}</div>`;
-  document.body.appendChild(s); requestAnimationFrame(() => s.classList.add("open"));
+  document.body.appendChild(s); window.GgselI18n.apply(s); requestAnimationFrame(() => s.classList.add("open"));
   s.addEventListener("click", e => { if (e.target === s) closeSheet(); });
   sh = s; s._focus=document.activeElement; document.body.style.overflow="hidden"; setTimeout(()=>s.querySelector("input,textarea,button")?.focus(),50);
 }
@@ -272,8 +273,8 @@ function closeSheet() { if (!sh) return; const s = sh; sh = null; document.body.
 const openTg = u => { if (!/^https:\/\/t\.me\//.test(u)) return; tg && tg.openTelegramLink ? tg.openTelegramLink(u) : window.open(u, "_blank", "noopener"); };
 
 // ------------------------------------------------------------ router
-function go(n, a) { stack.push(page); page = [n, a]; render(); }
-function back() { page = stack.pop() || ["home"]; render(); }
+function go(n, a) { upgrade?.capture(); stack.push(page); page = [n, a]; render(); }
+function back() { upgrade?.capture(); page = stack.pop() || ["home"]; render(); }
 let introReadyAt = 0, introTimer;
 function updateIntroCountdown() {
   if (page[0] !== "intro") { clearInterval(introTimer); return; }
@@ -281,7 +282,7 @@ function updateIntroCountdown() {
   if (!button) return;
   const seconds = Math.max(0, Math.ceil((introReadyAt - performance.now()) / 1000));
   button.disabled = seconds > 0;
-  button.textContent = seconds ? `Я ознакомлен(а) · ${seconds} с` : "Я ознакомлен(а)";
+  button.textContent = window.GgselI18n.text(seconds ? `Я ознакомлен(а) · ${seconds} с` : "Я ознакомлен(а)");
   if (!seconds) clearInterval(introTimer);
 }
 let entranceObserver;
@@ -305,7 +306,7 @@ async function render(keepScroll=false) {
   const giftScroll=keepScroll ? $("#live-feed .gift-track")?.scrollLeft : 0;
   const t = ++tok, [n, a] = page;
   if (n !== "intro") clearInterval(introTimer);
-  document.querySelectorAll("#nav>button[data-arg]").forEach(b => b.classList.toggle("on", b.dataset.arg === TABMAP[n]));
+  document.querySelectorAll("#nav>button[data-arg]").forEach(b => b.classList.toggle("on", b.dataset.arg === (n.startsWith("payout-")?"reqs":TABMAP[n])));
   if (tg && tg.BackButton) stack.length ? tg.BackButton.show() : tg.BackButton.hide();
   if(!keepScroll) view.innerHTML = sk(3);
   try {
@@ -318,7 +319,7 @@ async function render(keepScroll=false) {
   }
   view.classList.remove("in"); if (!keepScroll) { void view.offsetWidth; view.classList.add("in"); } window.scrollTo({top: keepScroll ? y : 0, behavior: "instant"});
   animateEntrance(keepScroll);
-  labelInputs(); hydrateGifts(); hydrateFeed();
+  labelInputs(); hydrateGifts(); hydrateFeed(); upgrade?.afterRender();
   if (n === "intro") {
     clearInterval(introTimer);
     updateIntroCountdown();
@@ -338,7 +339,7 @@ document.addEventListener("input", e => {
 });
 
 // ------------------------------------------------------------ simple actions
-A.tab = n => { stack = []; page = [n]; render(); };
+A.tab = n => { upgrade?.capture(); stack = []; page = [n]; render(); };
 A.go = n => go(n);
 A.new = () => { introReadyAt = performance.now() + 5000; go("intro"); };
 A.introContinue = () => {
@@ -364,81 +365,21 @@ A.support = () => me.support ? openTg("https://t.me/" + me.support) : toast("К�
 // ------------------------------------------------------------ pages
 const dealCard = d => {
   const [l, c] = ST[d.status];
-  return `<div class="card" data-act="deal" data-arg="${d.id}"><div class="row"><b>${esc(d.title)}</b><span class="bd ${c}">${l}</span></div>
+  return `<div class="card" data-act="deal" data-arg="${d.id}"><div class="row"><b data-user-text>${esc(d.title)}</b><span class="bd ${c}">${l}</span></div>
   <div class="row mut" style="margin-top:6px"><span>Код ${esc(d.join_code||"—")}</span><b style="color:var(--ink)">${fm(d.amount, d.currency)}</b></div></div>`;
 };
 const reviewCard = r => `<div class="card"><div class="row"><div class="row" style="justify-content:flex-start"><div class="av">${esc((r.name.replace("@", "")[0] || "U").toUpperCase())}</div>
-  <div><b>${esc(r.name)}</b></div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p>${esc(r.text)}</p>` : ""}</div>`;
-const SCREENSHOT_REVIEWS = [
-  ["@Алексей", 5, "Нормально"], ["@buyer_pro", 5, "Всё четко,без скама"],
-  ["@thevlastov", 5, "Красава не обманул"], ["@pavel_msk", 5, "Уже третья сделка, всё гладко"],
-  ["@bobofonw", 3, "советую"], ["@VajnixyXD", 5, "поверил на слово, не наебал спасибо"],
-  ["@воздух я", 5, "имба бляя"], ["@gartechikq", 4, "Норм но доверия не много даже после использования"],
-  ["@bododods", 5, "Лайк, не кинули"], ["@awangardiks", 5, "Сервис пушка"],
-  ["@FunPayHold", 5, "Ну вроде не кинули, деньги заплатили"],
-  ["@cryptowertty", 5, "нормально"], ["@tupoy_genniy", 5, "заебок"],
-  ["@buyer_pro", 5, "не наеб"], ["@buyer_pro", 5, "не наеб"],
-  ["@buyer_pro", 5, "афигеннг спасибо продал нфт"], ["@buyer_pro", 5, "кайф"],
-  ["@stepan_msc", 5, "Лучший сервис для сделок с подарками"],
-  ["@kate_moon", 5, "Комиссия маленькая, всё прозрачно"], ["@buyer_pro", 5, "топчик"],
-  ["@danyasssjer", 5, "Быстро и за норм прайс+реп"],
-  ["@lovemybaby", 5, "Сделка прошла отлично, рекомендую"],
-  ["@kirill_tg", 5, "Гарант всё чётко проверил, спасибо!"],
-  ["@sasha_nft", 5, "Скинул подарок, деньги пришли почти сразу"],
-  ["@egorka_spb", 5, "Сделка прошла отлично, рекомендую"],
-  ["@egorka_spb", 4, "нормально"], ["@maxpower", 4, "Уже третья сделка, всё гладко"],
-  ["@sweetdreamz", 5, "Оперативно, никаких задержек"],
-  ["@sweetdreamz", 5, "Отличная поддержка, помогли разобраться"],
-  ["@tonlover", 5, "Комиссия маленькая, всё прозрачно"],
-  ["@miloradik", 5, "Комиссия маленькая, всё прозрачно"],
-  ["@roman_x", 5, "Комиссия маленькая, всё прозрачно"],
-  ["@egorka_spb", 5, "Скинул подарок, деньги пришли почти сразу"],
-  ["@kate_moon", 5, "Гарант всё чётко проверил, спасибо!"],
-  ["@vano228", 5, "Красавцы, всё по-честному"],
-  ["@maxpower", 4, "Просто и понятно, разобрался за минуту"],
-  ["@kirill_tg", 5, "Ахуенный ботик, быстро провели сделку, советую всем"],
-  ["@roman_x", 5, "Отличная поддержка, помогли разобраться"],
-  ["@anyuta", 5, "Продал подарок за 5 минут, супер сервис"],
-  ["@sasha_nft", 5, "Отличная поддержка, помогли разобраться"],
-  ["@denchik", 5, "Комиссия маленькая, всё прозрачно"],
-  ["@kirill_tg", 5, "Скинул подарок, деньги пришли почти сразу"],
-  ["@miloradik", 5, "Лучший сервис для сделок с подарками"],
-  ["@аноним", 5, "Продал подарок за 5 минут, супер сервис"],
-  ["@dashka99", 5, "Реально безопасно, гарант не подведёт"],
-  ["@miloradik", 4, "Сработало, но не сразу понял как выводить"],
-  ["@artem_pro", 5, "Красавцы, всё по-честному"],
-  ["@zaycev_go", 5, "Просто и понятно, разобрался за минуту"],
-  ["@artem_pro", 5, "Гарант всё чётко проверил, спасибо!"],
-  ["@nikita_spb", 5, "Гарант на связи 24/7, реально помогают"],
-  ["@sasha_nft", 5, "Сделка прошла отлично, рекомендую"],
-  ["@аноним", 5, "Просто и понятно, разобрался за минуту"],
-  ["@egorka_spb", 5, "Гарант всё чётко проверил, спасибо!"],
-  ["@zaycev_go", 4, "Всё ок, но хотелось бы больше валют"],
-  ["@аноним", 5, "Быстро и без проблем, деньги пришли сразу"],
-  ["@giftmaster", 5, "Отличная поддержка, помогли разобраться"],
-  ["@kate_moon", 5, "Уже не первый раз пользуюсь, всё стабильно"],
-  ["@kate_moon", 5, "Просто и понятно, разобрался за минуту"],
-  ["@bogdan_007", 5, "Скинул подарок, деньги пришли почти сразу"],
-  ["@dashka99", 4, "Всё ок, но хотелось бы больше валют"],
-  ["@roman_x", 5, "Быстро и без проблем, деньги пришли сразу"],
-  ["@miloradik", 5, "Оперативно, никаких задержек"],
-  ["@lovemybaby", 4, "Всё как и обещали, доволен"],
-  ["@lera_v", 5, "Всё как и обещали, доволен"],
-  ["@artem_pro", 5, "Скинул подарок, деньги пришли почти сразу"],
-  ["@dashka99", 4, "Нормально, но пришлось подождать пару минут"],
-  ["@quickbuyer", 5, "Понятный интерфейс и удобные статусы сделки."],
-  ["@neontrade", 5, "Очень удобный сервис, провожу сделки не первый раз, проблем не было."]
-].filter(([name]) => name.toLowerCase() !== "@klundyy").map(([name, rating, text]) => ({ name, rating, text, source: "screenshot" }));
+  <div><b data-user-text>${esc(r.name)}</b></div></div><span class="st">${stars(r.rating)}</span></div>${r.text ? `<p data-user-text>${esc(r.text)}</p>` : ""}</div>`;
 
 PG.home = async () => {
   const [h] = await Promise.all([api("/home"),refreshMe()]);
-  const reviews=[...h.reviews,...SCREENSHOT_REVIEWS];
+  const reviews=h.reviews;
   return `<button class="hero-banner" data-act="new" aria-label="Создать сделку"><img src="/static/assets/ggsell-p2p-banner.webp" alt="GG SELL — P2P-сделки в Telegram. Создавайте сделки и следите за каждым этапом." loading="eager"></button>
   <h3>Быстрые действия</h3><div class="qa"><button data-act="new"><i>${ico("plus")}</i>Новая сделка</button><button data-act="joinsheet"><i>${ico("box")}</i>Вступить в<br>сделку</button><button data-act="tab" data-arg="deals"><i>${ico("gem")}</i>Мои сделки</button></div>
   <div class="card balance-card"><div class="mut">Ваш баланс</div><div class="big" id="balv">${fmBalance(me.balances[cur],cur)}</div>
   <div class="chips" id="curs">${CUR.map(c=>`<button class="chip ${c===cur?"on":""}" data-act="cur" data-arg="${c}">${c}</button>`).join("")}</div></div>
   <h3>Последние сделки<button class="text-button" data-act="tab" data-arg="deals">Все</button></h3><div id="recent-deals">${h.deals.length?`<div class="list">${h.deals.map(dealCard).join("")}</div>`:empty(ico("bag")+"<p>У вас пока нет сделок</p>")}</div>
-  <h3>Последние успешные сделки<span class="live" id="live-state">● LIVE</span></h3><div id="live-feed">${catalogCards()}</div>
+  <h3>Каталог подарков<span class="live" id="live-state">● LIVE</span></h3><div id="live-feed">${catalogCards()}</div>
   <h3>Последние отзывы<button class="text-button" data-act="rvhome">+ Написать</button></h3><div class="reviews-list">${reviews.length?reviews.map(reviewCard).join(""):empty("Отзывов пока нет")}</div>`;
 };
 
@@ -487,7 +428,7 @@ PG.deal = async id => {
   const inv = d.is_creator && (d.status === "created" || d.status === "waiting_participant");
   return `${bk}<div class="card"><div class="row"><span class="mut">Сделка · код ${esc(d.join_code)}</span><span class="bd ${sc}">${sl}</span></div>
   <div class="big">${fm(d.amount, d.currency)}</div><div class="tl">${steps.map((_, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>
-  ${d.description ? `<p>${esc(d.description)}</p>` : ""}
+  ${d.description ? `<p data-user-text>${esc(d.description)}</p>` : ""}
   ${d.nft.length ? `<div class="mut">NFT-ссылки</div>${d.nft.map(u => `<div class="link" data-act="ext" data-arg="${esc(u)}">${ico("gift")}${esc(u.replace("https://t.me/nft/", ""))}</div>`).join("")}` : ""}</div>
   <div class="card"><div class="kv"><span class="mut">Продавец</span><b>${esc(d.seller ? d.seller.name : "Ожидается")}</b></div>
   <div class="kv"><span class="mut">Покупатель</span><b>${esc(d.buyer ? d.buyer.name : "Ожидается")}</b></div>
@@ -540,7 +481,7 @@ A.reqsave = (k, b) => busy(b, async () => {
   await api("/requisites/" + k, { method: "PUT", body: { value: $("#rv").value } });
   closeSheet(); haptic("success"); toast("Сохранено"); render();
 });
-A.topup = () => sheet(`<h2 class="topup-title">${ico("plus")} Пополнение баланса</h2><p class="mut">Свяжитесь с поддержкой (${me.support ? "@" + esc(me.support) : "контакт не указан"}), чтобы узнать реквизиты для перевода. После перевода оставьте заявку — администратор проверит оплату и зачислит баланс.</p>
+A.topup = () => sheet(`<h2 class="topup-title">${ico("plus")} Пополнение баланса</h2><p class="mut">Реальные платежи не подключены. Заявка создаёт запись в учётной системе; деньги с карты не списываются.</p>
   <label>Валюта</label><input value="RUB" readonly aria-label="Валюта">
   <label>Сумма</label><input id="dam" inputmode="decimal" placeholder="0.00" autocomplete="off">
   <label>Комментарий (необязательно)</label><input id="dcomment" maxlength="160" placeholder="Например, номер перевода или чек" autocomplete="off">
@@ -576,15 +517,15 @@ PG.profile = async () => {
   const testRating = s.test_rating !== null && s.test_rating !== undefined;
   const rating = testRating ? s.test_rating : s.rating;
   const mi = (a, arg, ic, t, sm = "") => `<button class="mi" data-act="${a}" data-arg="${arg}"><i>${ico(ic)}</i><div>${t}${sm ? `<small>${sm}</small>` : ""}</div>${ico("chev")}</button>`;
-  return `<div class="card profile-card"><div class="av lg">${u.photo?`<img src="${esc(u.photo)}" alt="Аватар профиля">`:esc((u.name||name).replace("@","")[0].toUpperCase())}</div><div><h1>${esc(u.name||name)}</h1><span class="bd green">${me.auth_verified ? "Вход через Telegram" : "Тестовый профиль"}</span><div class="mut">${esc(u.username?"@"+u.username:"")}</div><small class="mut">ID: ${u.id}</small></div></div>
+  return `<div class="card profile-card"><div class="av lg">${u.photo?`<img src="${esc(u.photo)}" alt="Аватар профиля">`:esc((u.name||name).replace("@","")[0].toUpperCase())}</div><div><h1 data-user-text>${esc(u.name||name)}</h1><span class="bd green">${me.auth_verified ? "Вход через Telegram" : "Профиль"}</span><div class="mut">${esc(u.username?"@"+u.username:"")}</div><small class="mut">ID: ${u.id}</small></div></div>
   <div class="stats"><div class="stat">Сделок<b>${s.test_completed}</b></div><div class="stat">Активных сейчас<b>${s.active}</b></div>
   <div class="stat">Оборот<b style="font-size:15px">${esc(to)}</b></div><div class="stat">${testRating ? "Рейтинг" : "Рейтинг"}<b>${rating === null || rating === undefined ? "—" : `${Number(rating).toFixed(1)} ★`}</b></div>
   </div>
-  ${dm()}<div class="group-label">УПРАВЛЕНИЕ</div>
+  <div class="group-label">УПРАВЛЕНИЕ</div>
   ${me.is_admin ? mi("go", "admin", "shield", "Админ-панель", "Управление платформой") : ""}
   ${me.is_worker ? mi("go", "worker", "wallet", "Ворк-панель", "Ваш баланс") : ""}
   ${mi("tab", "reqs", "gem", "Мои реквизиты")}${mi("wdsheet", "", "out", "Вывод средств")}${mi("go", "deals", "bag", "История сделок")}
-  ${mi("go", "ops", "list", "История операций")}<div class="group-label">СЕРВИС И ПОМОЩЬ</div>${mi("go", "support", "headset", "Поддержка")}${mi("language", "", "help", "Язык интерфейса", "Русский")}${mi("closetg", "", "out", "Закрыть мини-приложение")}`;
+  ${mi("go", "ops", "list", "История операций")}<div class="group-label">СЕРВИС И ПОМОЩЬ</div>${mi("go", "support", "headset", "Поддержка")}${mi("language", "", "help", "Язык интерфейса", window.GgselI18n.lang === "en" ? "English" : "Русский")}${mi("closetg", "", "out", "Закрыть мини-приложение")}`;
 };
 PG.support = async () => `${bk}<h1>Поддержка</h1><div class="card"><p>Возник вопрос по сделке или выводу средств? Напишите в поддержку и укажите ID сделки.</p>
   ${me.support ? `<button class="btn" data-act="support">${ico("send")}Написать в поддержку</button>` : `<p class="mut">Контакт поддержки пока не указан владельцем приложения.</p>`}</div>`;
@@ -596,7 +537,7 @@ PG.worker = async () => {
   return `${bk}<h1>Ворк-панель</h1><div class="card"><b>Ваш баланс в приложении</b><p>${esc(balances)}</p><div class="hint">Показывает запись в базе. Денежный провайдер не подключён.</div></div>
   ${enabled ? `<div class="card"><h3>Начислить себе баланс</h3><label>Валюта</label>${chipsCur("wcur")}
     <label>Сумма</label><input id="wamount" inputmode="decimal" placeholder="Например, 100" autocomplete="off"><button class="btn" data-act="wcredit">Начислить</button><p class="mut">Начисление доступно только в режиме sandbox.</p></div>` : '<div class="card"><p>Начисления отключены.</p></div>'}
-  ${enabled ? `<div class="card"><h3>Настройки демостатистики</h3><label>Добавленное количество (демо)</label>
+  ${enabled ? `<div class="card"><h3>Дополнительная статистика</h3><label>Добавленное количество</label>
     <input id="wcompleted" type="number" inputmode="numeric" min="0" max="1000000" step="1" value="${w.test_stats?.completed ?? 0}">
     <label>Рейтинг (от 0 до 5)</label><input id="wrating" type="number" inputmode="decimal" min="0" max="5" step="0.1" value="${w.test_stats?.rating ?? 0}">
     <button class="btn" data-act="wstats">Сохранить</button><p class="mut">Счётчик в профиле включает завершённые сделки и добавленное здесь количество.</p></div>` : ""}
@@ -689,7 +630,7 @@ function initialFeed() {
   try { sessionStorage.setItem("nft_feed_previous",JSON.stringify(items.map(x=>x.key))); } catch(e) { /* The gallery still works without storage. */ }
   return items;
 }
-const catalogCards = () => `<div class="gift-track" aria-label="Последние успешные сделки">${(feedItems ||= initialFeed()).map(giftCard).join("")}</div>`;
+const catalogCards = () => `<div class="gift-track" aria-label="Каталог подарков">${(feedItems ||= initialFeed()).map(giftCard).join("")}</div>`;
 function updateGiftPlayback() {
   let playing=0;
   document.querySelectorAll(".gift-card lottie-player").forEach(player=>{
@@ -750,7 +691,7 @@ function saveDraft(){
  sessionStorage.setItem("deal_draft",JSON.stringify({amount:$("#amt").value,description:$("#desc").value,nft:$("#nft").value,currency:$("#ncur .on")?.dataset.arg,role:$(".seg .on")?.dataset.arg}));
 }
 function labelInputs(){
- document.querySelectorAll("input,textarea").forEach((el,i)=>{if(!el.id)el.id="field-"+i;let l=el.previousElementSibling;if(l?.tagName==="LABEL")l.htmlFor=el.id; if(!el.labels?.length)el.setAttribute("aria-label",el.placeholder||"Значение");});
+ document.querySelectorAll("input,textarea").forEach((el,i)=>{if(!el.id)el.id="field-"+i;let l=el.previousElementSibling;if(l?.tagName==="LABEL")l.htmlFor=el.id; if(!el.labels?.length&&!el.hasAttribute("aria-label"))el.setAttribute("aria-label",el.placeholder||"Значение");});
 }
 document.addEventListener("input",()=>{nftPreview();saveDraft();});
 document.addEventListener("click",e=>{if(e.target.closest('[data-act="seg"]'))saveDraft();});
@@ -779,6 +720,8 @@ document.addEventListener("visibilitychange",()=>{updateGiftPlayback();if(!docum
 if(document.modelContext?.registerTool){
  try { document.modelContext.registerTool({name:"list_my_deals",title:"Мои сделки",description:"Read the signed-in participant's deals.",inputSchema:{type:"object",properties:{filter:{type:"string",enum:["all","active","done"]}},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},async execute(input){const f=input?.filter||"all";if(!["all","active","done"].includes(f))throw new Error("Invalid filter");return await api("/deals?filter="+f);}}); }catch{}
 }
+// Withdrawal upgrade shares the existing router, authentication and API.
+upgrade=window.GgselPayouts({PG,A,api,go,back,render,refreshMe,getMe:()=>me,getPage:()=>page[0],getCurrency:()=>cur,esc,ico,busy,toast,closeSheet,luhn});
 // ------------------------------------------------------------ init
 (async function init() {
   if (tg) {
@@ -786,14 +729,16 @@ if(document.modelContext?.registerTool){
     try { tg.setHeaderColor("#f6f5f0"); tg.setBackgroundColor("#f6f5f0"); tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) { }
     tg.BackButton && tg.BackButton.onClick(back);
   }
+  const onboarding=upgrade.start();
   // Preview mode is explicit; an API outage NEVER switches to simulated money.
   DEMO = CFG.preview === true;
   try {
     if(P.get("worker")==="1") await api("/worker/activate",{method:"POST"});
     await refreshMe();
-  } catch (e) { view.innerHTML = empty(esc(e.message)); return; }
+  } catch (e) { await onboarding; view.innerHTML = empty(esc(e.message)); window.GgselI18n.apply(); return; }
   if(P.get("admin")==="1" && me.is_admin) page=["admin","stats"];
   else if(P.get("worker")==="1" && me.is_worker) page=["worker"];
+  await onboarding;
   await render();
   await syncLive();setInterval(syncLive,3000);setInterval(rotateFeed,26000);
 })();

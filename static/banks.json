@@ -1,0 +1,506 @@
+[
+  {
+    "id": "sber",
+    "currency": "RUB",
+    "name": {
+      "ru": "СберБанк",
+      "en": "SberBank"
+    },
+    "domain": "sberbank.ru",
+    "color": "#18a95a",
+    "icon": "assets/banks/sber.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "tbank",
+    "currency": "RUB",
+    "name": {
+      "ru": "Т-Банк",
+      "en": "T-Bank"
+    },
+    "domain": "tbank.ru",
+    "color": "#ffdc2c",
+    "icon": "assets/banks/tbank.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "alfa",
+    "currency": "RUB",
+    "name": {
+      "ru": "Альфа-Банк",
+      "en": "Alfa-Bank"
+    },
+    "domain": "alfabank.ru",
+    "color": "#ef3124",
+    "icon": "assets/banks/alfa.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "vtb",
+    "currency": "RUB",
+    "name": {
+      "ru": "ВТБ",
+      "en": "VTB"
+    },
+    "domain": "vtb.ru",
+    "color": "#0054ae",
+    "icon": "assets/banks/vtb.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "gpb",
+    "currency": "RUB",
+    "name": {
+      "ru": "Газпромбанк",
+      "en": "Gazprombank"
+    },
+    "domain": "gazprombank.ru",
+    "color": "#164194",
+    "icon": "assets/banks/gpb.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "sovcom",
+    "currency": "RUB",
+    "name": {
+      "ru": "Совкомбанк",
+      "en": "Sovcombank"
+    },
+    "domain": "sovcombank.ru",
+    "color": "#f12437",
+    "icon": "assets/banks/sovcom.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "psb",
+    "currency": "RUB",
+    "name": {
+      "ru": "ПСБ",
+      "en": "PSB"
+    },
+    "domain": "psbank.ru",
+    "color": "#f36e23",
+    "icon": "assets/banks/psb.png",
+    "source": "https://www.google.com/s2/favicons?domain=psbank.ru&sz=128"
+  },
+  {
+    "id": "rshb",
+    "currency": "RUB",
+    "name": {
+      "ru": "Россельхозбанк",
+      "en": "Rosselkhozbank"
+    },
+    "domain": "rshb.ru",
+    "color": "#4d8d3b",
+    "icon": "assets/banks/rshb.png",
+    "source": "https://www.google.com/s2/favicons?domain=rshb.ru&sz=128"
+  },
+  {
+    "id": "mkb",
+    "currency": "RUB",
+    "name": {
+      "ru": "МКБ",
+      "en": "Credit Bank of Moscow"
+    },
+    "domain": "mkb.ru",
+    "color": "#c21d2e",
+    "icon": "assets/banks/mkb.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "domrf",
+    "currency": "RUB",
+    "name": {
+      "ru": "Банк ДОМ.РФ",
+      "en": "Bank DOM.RF"
+    },
+    "domain": "domrfbank.ru",
+    "color": "#88b337",
+    "icon": "assets/banks/domrf.png",
+    "source": "https://www.google.com/s2/favicons?domain=domrfbank.ru&sz=128"
+  },
+  {
+    "id": "raifru",
+    "currency": "RUB",
+    "name": {
+      "ru": "Райффайзенбанк",
+      "en": "Raiffeisenbank"
+    },
+    "domain": "raiffeisen.ru",
+    "color": "#ffec00",
+    "icon": "assets/banks/raifru.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "otpru",
+    "currency": "RUB",
+    "name": {
+      "ru": "ОТП Банк",
+      "en": "OTP Bank"
+    },
+    "domain": "otpbank.ru",
+    "color": "#64a70b",
+    "icon": "assets/banks/otpru.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "akbars",
+    "currency": "RUB",
+    "name": {
+      "ru": "Ак Барс Банк",
+      "en": "Ak Bars Bank"
+    },
+    "domain": "akbars.ru",
+    "color": "#008055",
+    "icon": "assets/banks/akbars.png",
+    "source": "https://www.google.com/s2/favicons?domain=akbars.ru&sz=128"
+  },
+  {
+    "id": "mts",
+    "currency": "RUB",
+    "name": {
+      "ru": "МТС Банк",
+      "en": "MTS Bank"
+    },
+    "domain": "mtsbank.ru",
+    "color": "#e30611",
+    "icon": "assets/banks/mts.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "ozon",
+    "currency": "RUB",
+    "name": {
+      "ru": "Озон Банк",
+      "en": "Ozon Bank"
+    },
+    "domain": "ozonbank.ru",
+    "color": "#005bff",
+    "icon": "assets/banks/ozon.svg",
+    "source": "https://github.com/sqkrv/sharespences/tree/main/web/src/assets/banks"
+  },
+  {
+    "id": "bspb",
+    "currency": "RUB",
+    "name": {
+      "ru": "Банк Санкт-Петербург",
+      "en": "Bank Saint Petersburg"
+    },
+    "domain": "bspb.ru",
+    "color": "#ee1c25",
+    "icon": "assets/banks/bspb.png",
+    "source": "https://www.google.com/s2/favicons?domain=bspb.ru&sz=128"
+  },
+  {
+    "id": "privat",
+    "currency": "UAH",
+    "name": {
+      "ru": "ПриватБанк",
+      "en": "PrivatBank"
+    },
+    "domain": "privatbank.ua",
+    "color": "#75b62d",
+    "icon": "assets/banks/privat.png",
+    "source": "https://privatbank.ua/favicon.ico"
+  },
+  {
+    "id": "mono",
+    "currency": "UAH",
+    "name": {
+      "ru": "monobank",
+      "en": "monobank"
+    },
+    "domain": "monobank.ua",
+    "color": "#17191b",
+    "icon": "assets/banks/mono.png",
+    "source": "https://monobank.ua/favicon.ico"
+  },
+  {
+    "id": "oschad",
+    "currency": "UAH",
+    "name": {
+      "ru": "Ощадбанк",
+      "en": "Oschadbank"
+    },
+    "domain": "oschadbank.ua",
+    "color": "#15734e",
+    "icon": "assets/banks/oschad.png",
+    "source": "https://www.google.com/s2/favicons?domain=oschadbank.ua&sz=128"
+  },
+  {
+    "id": "raifua",
+    "currency": "UAH",
+    "name": {
+      "ru": "Райффайзен Банк",
+      "en": "Raiffeisen Bank"
+    },
+    "domain": "raiffeisen.ua",
+    "color": "#ffe600",
+    "icon": "assets/banks/raifua.png",
+    "source": "https://www.google.com/s2/favicons?domain=raiffeisen.ua&sz=128"
+  },
+  {
+    "id": "pumb",
+    "currency": "UAH",
+    "name": {
+      "ru": "ПУМБ",
+      "en": "PUMB"
+    },
+    "domain": "pumb.ua",
+    "color": "#d21027",
+    "icon": "assets/banks/pumb.png",
+    "source": "https://www.google.com/s2/favicons?domain=pumb.ua&sz=128"
+  },
+  {
+    "id": "sense",
+    "currency": "UAH",
+    "name": {
+      "ru": "Sense Bank",
+      "en": "Sense Bank"
+    },
+    "domain": "sensebank.com.ua",
+    "color": "#b6f24c",
+    "icon": "assets/banks/sense.png",
+    "source": "https://www.google.com/s2/favicons?domain=sensebank.com.ua&sz=128"
+  },
+  {
+    "id": "ukrsib",
+    "currency": "UAH",
+    "name": {
+      "ru": "Укрсиббанк",
+      "en": "UKRSIBBANK"
+    },
+    "domain": "ukrsibbank.com",
+    "color": "#008d62",
+    "icon": "assets/banks/ukrsib.png",
+    "source": "https://ukrsibbank.com/favicon.ico"
+  },
+  {
+    "id": "otpua",
+    "currency": "UAH",
+    "name": {
+      "ru": "ОТП Банк",
+      "en": "OTP Bank"
+    },
+    "domain": "otpbank.com.ua",
+    "color": "#66a51b",
+    "icon": "assets/banks/otpua.png",
+    "source": "https://otpbank.com.ua/favicon.ico"
+  },
+  {
+    "id": "halyk",
+    "currency": "KZT",
+    "name": {
+      "ru": "Halyk Bank",
+      "en": "Halyk Bank"
+    },
+    "domain": "halykbank.kz",
+    "color": "#08755e",
+    "icon": "assets/banks/halyk.png",
+    "source": "https://halykbank.kz/favicon.ico"
+  },
+  {
+    "id": "kaspi",
+    "currency": "KZT",
+    "name": {
+      "ru": "Kaspi Bank",
+      "en": "Kaspi Bank"
+    },
+    "domain": "kaspi.kz",
+    "color": "#f14635",
+    "icon": "assets/banks/kaspi.png",
+    "source": "https://www.google.com/s2/favicons?domain=kaspi.kz&sz=128"
+  },
+  {
+    "id": "bcc",
+    "currency": "KZT",
+    "name": {
+      "ru": "Банк ЦентрКредит",
+      "en": "Bank CenterCredit"
+    },
+    "domain": "bcc.kz",
+    "color": "#13994b",
+    "icon": "assets/banks/bcc.png",
+    "source": "https://www.google.com/s2/favicons?domain=bcc.kz&sz=128"
+  },
+  {
+    "id": "forte",
+    "currency": "KZT",
+    "name": {
+      "ru": "ForteBank",
+      "en": "ForteBank"
+    },
+    "domain": "forte.kz",
+    "color": "#65152f",
+    "icon": "assets/banks/forte.png",
+    "source": "https://forte.kz/favicon.ico"
+  },
+  {
+    "id": "freedom",
+    "currency": "KZT",
+    "name": {
+      "ru": "Freedom Bank",
+      "en": "Freedom Bank"
+    },
+    "domain": "bankffin.kz",
+    "color": "#5abb3d",
+    "icon": "assets/banks/freedom.png",
+    "source": "https://www.google.com/s2/favicons?domain=bankffin.kz&sz=128"
+  },
+  {
+    "id": "nurbank",
+    "currency": "KZT",
+    "name": {
+      "ru": "Нурбанк",
+      "en": "Nurbank"
+    },
+    "domain": "nurbank.kz",
+    "color": "#f49d22",
+    "icon": "assets/banks/nurbank.png",
+    "source": "https://nurbank.kz/favicon.ico"
+  },
+  {
+    "id": "otbasy",
+    "currency": "KZT",
+    "name": {
+      "ru": "Отбасы банк",
+      "en": "Otbasy Bank"
+    },
+    "domain": "hcsbk.kz",
+    "color": "#43b1b8",
+    "icon": "assets/banks/otbasy.png",
+    "source": "https://hcsbk.kz/favicon.ico"
+  },
+  {
+    "id": "kapital",
+    "currency": "UZS",
+    "name": {
+      "ru": "Капиталбанк",
+      "en": "Kapitalbank"
+    },
+    "domain": "kapitalbank.uz",
+    "color": "#ffd500",
+    "icon": "assets/banks/kapital.png",
+    "source": "https://kapitalbank.uz/favicon.ico"
+  },
+  {
+    "id": "ipak",
+    "currency": "UZS",
+    "name": {
+      "ru": "Ипак Йули Банк",
+      "en": "Ipak Yuli Bank"
+    },
+    "domain": "ipakyulibank.uz",
+    "color": "#00775a",
+    "icon": "assets/banks/ipak.png",
+    "source": "https://www.google.com/s2/favicons?domain=ipakyulibank.uz&sz=128"
+  },
+  {
+    "id": "hamkor",
+    "currency": "UZS",
+    "name": {
+      "ru": "Хамкорбанк",
+      "en": "Hamkorbank"
+    },
+    "domain": "hamkorbank.uz",
+    "color": "#119a58",
+    "icon": "assets/banks/hamkor.png",
+    "source": "https://hamkorbank.uz/favicon.ico"
+  },
+  {
+    "id": "anor",
+    "currency": "UZS",
+    "name": {
+      "ru": "Анорбанк",
+      "en": "Anorbank"
+    },
+    "domain": "anorbank.uz",
+    "color": "#cf1548",
+    "icon": "assets/banks/anor.png",
+    "source": "https://www.google.com/s2/favicons?domain_url=https://www.anorbank.uz&sz=128"
+  },
+  {
+    "id": "tbc",
+    "currency": "UZS",
+    "name": {
+      "ru": "TBC Bank",
+      "en": "TBC Bank"
+    },
+    "domain": "tbcbank.uz",
+    "color": "#00a4dc",
+    "icon": "assets/banks/tbc.png",
+    "source": "https://tbcbank.uz/favicon.ico"
+  },
+  {
+    "id": "agro",
+    "currency": "UZS",
+    "name": {
+      "ru": "Агробанк",
+      "en": "Agrobank"
+    },
+    "domain": "agrobank.uz",
+    "color": "#22a86d",
+    "icon": "assets/banks/agro.png",
+    "source": "https://agrobank.uz/favicon.ico"
+  },
+  {
+    "id": "xalq",
+    "currency": "UZS",
+    "name": {
+      "ru": "Народный банк",
+      "en": "Xalq Banki"
+    },
+    "domain": "xb.uz",
+    "color": "#e2b628",
+    "icon": "assets/banks/xalq.png",
+    "source": "https://xb.uz/favicon.ico"
+  },
+  {
+    "id": "ipoteka",
+    "currency": "UZS",
+    "name": {
+      "ru": "Ипотека-банк",
+      "en": "Ipoteka Bank"
+    },
+    "domain": "ipotekabank.uz",
+    "color": "#83b817",
+    "icon": "assets/banks/ipoteka.png",
+    "source": "https://ipotekabank.uz/favicon.ico"
+  },
+  {
+    "id": "asaka",
+    "currency": "UZS",
+    "name": {
+      "ru": "Асакабанк",
+      "en": "Asakabank"
+    },
+    "domain": "asakabank.uz",
+    "color": "#de2b2c",
+    "icon": "assets/banks/asaka.png",
+    "source": "https://asakabank.uz/favicon.ico"
+  },
+  {
+    "id": "aloqa",
+    "currency": "UZS",
+    "name": {
+      "ru": "Алокабанк",
+      "en": "Aloqabank"
+    },
+    "domain": "aloqabank.uz",
+    "color": "#0062ac",
+    "icon": "assets/banks/aloqa.png",
+    "source": "https://aloqabank.uz/favicon.ico"
+  },
+  {
+    "id": "uzum",
+    "currency": "UZS",
+    "name": {
+      "ru": "Uzum Bank",
+      "en": "Uzum Bank"
+    },
+    "domain": "uzumbank.uz",
+    "color": "#6b24f5",
+    "icon": "assets/banks/uzum.png",
+    "source": "https://uzumbank.uz/favicon.ico"
+  }
+]

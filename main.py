@@ -16,6 +16,7 @@ from flask import Flask, g, jsonify, request, send_from_directory
 
 import config
 import database as db
+import payouts
 
 # Быстрые настройки: укажите значения в кавычках, без @; пусто — значение из .env.
 BOT_USERNAME = ""      # Юз бота — например, "my_deals_bot".
@@ -32,7 +33,8 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=None)
 LOG = logging.getLogger(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
-ASSETS = {"style.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.mp4"}
+ASSETS = {"style.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.mp4",
+          "payouts.js", "payouts.css", "i18n.js", "banks.json"}
 db.init()
 
 SC = db.SCALE
@@ -82,7 +84,8 @@ def luhn(s):
 def valid_req(kind, v):
     if kind == "card":
         v = re.sub(r"[ -]", "", v)
-        return v if re.fullmatch(r"\d{12,19}", v) and luhn(v) else None
+        # Legacy bindings are a display hint, never a full card PAN.
+        return v if re.fullmatch(r"\d{4}", v) else None
     if kind == "ton":
         return v if re.fullmatch(r"[A-Za-z0-9_-]{48}", v) else None
     if kind == "usdt":
@@ -124,7 +127,7 @@ def auth(admin=False, worker=False):
             if config.DEV_MODE and not raw:
                 uid = request.headers.get("X-Dev-User", "1")
                 uid = int(uid) if uid in ("1", "2", "3") else 1
-                tg = {"id": uid, "username": f"dev{uid}", "first_name": {1: "Тестовый продавец", 2: "Тестовый покупатель", 3: "Тестовый участник"}[uid]}
+                tg = {"id": uid, "username": f"dev{uid}", "first_name": {1: "Alex", 2: "Maria", 3: "Max"}[uid]}
             else:
                 tg = verify_init_data(raw) if config.BOT_TOKEN else None
             if not tg:
@@ -282,6 +285,18 @@ def gift_animation(name):
     if not re.fullmatch(r"\d{2}\.json", name):
         return err("Не найдено", 404)
     return send_from_directory(os.path.join(BASE, "static", "gifts"), name, mimetype="application/json")
+
+
+@app.get("/static/assets/<category>/<name>")
+def payout_asset(category, name):
+    public = {
+        "banks": {os.path.basename(b["icon"]) for b in payouts.BANKS},
+        "crypto": {"ton.png", "usdt.svg", "btc.svg"},
+        "animations": {f"{n}.webm" for n in ("purse", "card", "wallet", "stars", "ru", "en", "warning", "success")},
+    }
+    if name not in public.get(category, set()):
+        return err("Не найдено", 404)
+    return send_from_directory(os.path.join(BASE, "static", "assets", category), name)
 
 
 # ---------------------------------------------------------------- user
@@ -618,11 +633,23 @@ def withdraw():
     if config.PAYMENT_MODE != "sandbox":
         return err("Платёжный провайдер не подключён", 503)
     j = request.get_json(silent=True) or {}
+    if not isinstance(j, dict):
+        return err("Проверьте сумму, валюту и способ вывода")
     uid, amt, cur, kind = g.user["id"], amount(j.get("amount")), j.get("currency"), j.get("method")
     if not db.row("SELECT 1 FROM deals WHERE status='completed' AND (seller_id=? OR buyer_id=?) LIMIT 1", (uid, uid)):
         return err("Вывод доступен после одной завершённой сделки", 403)
+    if kind in ("bank", "stars", "wallet"):
+        try:
+            result = payouts.submit(uid, j, amt, cur, luhn)
+        except ValueError as e:
+            return err(str(e))
+        return jsonify(ok=True, **result)
     if amt is None or cur not in config.CURRENCIES or kind not in KINDS:
         return err("Проверьте сумму, валюту и способ вывода")
+    if cur not in {"card": payouts.FIAT, "ton": ("TON",), "usdt": ("USDT",)}[kind]:
+        return err("Проверьте сумму, валюту и способ вывода")
+    if cur in payouts.FIAT and amt % (SC // 100):
+        return err("Для этой валюты доступны два знака после запятой")
     rq = db.row("SELECT value FROM requisites WHERE user_id=? AND kind=?", (uid, kind))
     if not rq:
         return err("Сначала добавьте реквизиты для этого способа")
@@ -633,6 +660,15 @@ def withdraw():
     except ValueError as e:
         return err(str(e))
     return jsonify(ok=True)
+
+
+@app.get("/api/payouts/recipients")
+@auth()
+def payout_recipients():
+    rows = db.rows("SELECT method,currency,network,details FROM payout_recipients WHERE user_id=?", (g.user["id"],))
+    for row in rows:
+        row["details"] = json.loads(row["details"])
+    return jsonify(rows)
 
 
 # ---------------------------------------------------------------- admin (work panel)
