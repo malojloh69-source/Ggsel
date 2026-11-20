@@ -7,7 +7,7 @@ const box={window:{},localStorage:{getItem:()=>saved,setItem:(_,value)=>{saved=v
 vm.runInNewContext(fs.readFileSync('static/i18n-uk.js','utf8'),box);
 vm.runInNewContext(fs.readFileSync('static/i18n.js','utf8').replace('window.GgselI18n=','window.__dictionary={D,M};window.GgselI18n='),box);
 const I=box.window.GgselI18n;
-assert.equal(I.lang,'uk');assert.equal(I.locale,'uk-UA');assert.equal(I.languageName,'Українська');
+assert.equal(I.lang,'uk');assert.equal(I.hasSavedLanguage,true);assert.equal(I.locale,'uk-UA');assert.equal(I.languageName,'Українська');
 assert.equal(I.t('withdrawTitle'),'Виведення коштів');
 assert.equal(I.t('banksCount',{count:42}),'Знайдено банків: 42');
 assert.equal(I.text('Сделка · код 123456'),'Угода · код 123456');
@@ -20,4 +20,11 @@ I.set('uk');I.set('invalid');assert.equal(I.lang,'uk');
 const {D,M}=box.window.__dictionary;
 const missing=[...new Set([...Object.values(D).map(pair=>pair[1]),...Object.values(M)])].filter(value=>!box.window.GgselUkrainian[value]);
 assert.deepEqual(missing,[],'Every source string needs a Ukrainian translation');
-console.log('RU/EN/UK language checks passed');
+for(const initial of [null,'invalid']){
+ const fresh={window:{},localStorage:{getItem:()=>initial,setItem:()=>{}}};
+ vm.runInNewContext(fs.readFileSync('static/i18n-uk.js','utf8'),fresh);
+ vm.runInNewContext(fs.readFileSync('static/i18n.js','utf8'),fresh);
+ assert.equal(fresh.window.GgselI18n.hasSavedLanguage,false);
+ fresh.window.GgselI18n.set('en');assert.equal(fresh.window.GgselI18n.hasSavedLanguage,true);
+}
+console.log('RU/EN/UK language and saved-selection checks passed');
