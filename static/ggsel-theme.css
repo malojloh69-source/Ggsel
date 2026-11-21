@@ -38,6 +38,25 @@ label { font-weight: 500; }
 .btn.w { background: #fff; }
 .btn.d { background: #fee8e5; }
 .btn:disabled { opacity: .5; }
+.quick-actions-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0 4px; }
+.quick-actions-heading h3 { margin: 0; }
+.instruction-link {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  color: #444a53;
+  font-size: 13px;
+  font-weight: 600;
+}
+.instruction-link::before { position: absolute; z-index: -1; inset: 7px 0; border-radius: 10px; background: var(--chip); content: ""; }
+.instruction-link .ic { width: 16px; height: 16px; color: var(--g2); }
+.instruction-caption { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+.instruction-video { display: block; width: 100%; height: auto; max-height: 58vh; border-radius: 15px; background: #101513; }
 .qa { gap: 8px; }
 .qa button {
   gap: 10px;
@@ -232,5 +251,7 @@ textarea { min-height: 112px; }
   .qa button { min-height: 125px; }
 }
 @media (max-width: 360px) {
+  .quick-actions-heading h3 { font-size: 18px; }
+  .instruction-link { padding-inline: 8px; font-size: 12px; }
   .method-image { width: 64px; height: 64px; }
 }

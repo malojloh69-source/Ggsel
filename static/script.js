@@ -283,15 +283,24 @@ async function busy(b, fn) {
   try { await fn(); } catch (x) { if (!verificationUI?.handleError(x)) { toast(x.message, 1); haptic("error"); } }
   finally { b.classList.remove("load"); b.disabled = false; }
 }
-function sheet(html) {
+function sheet(html, opener) {
   closeSheet();
   const s = document.createElement("div"); s.className = "sheet-wrap";
   s.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(html.replace(/<[^>]*>/g, " ").slice(0,90))}" tabindex="-1"><div class="grab"></div><button class="sheet-close" data-act="close" aria-label="Закрыть">×</button>${html}</div>`;
   document.body.appendChild(s); window.GgselI18n.apply(s); requestAnimationFrame(() => s.classList.add("open"));
   s.addEventListener("click", e => { if (e.target === s) closeSheet(); });
-  sh = s; s._focus=document.activeElement; document.body.style.overflow="hidden"; setTimeout(()=>s.querySelector("input,textarea,button")?.focus(),50);
+  sh = s; s._focus=opener || document.activeElement; document.body.style.overflow="hidden"; setTimeout(()=>s.querySelector("input,textarea,button")?.focus(),50);
 }
-function closeSheet() { if (!sh) return; const s = sh; sh = null; document.body.style.overflow="";s._focus?.focus(); s.classList.remove("open"); setTimeout(() => s.remove(), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 340); }
+function closeSheet() {
+  if (!sh) return;
+  const s = sh;
+  sh = null;
+  s.querySelector(".instruction-video")?.pause();
+  document.body.style.overflow = "";
+  s._focus?.focus();
+  s.classList.remove("open");
+  setTimeout(() => s.remove(), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 340);
+}
 const openTg = u => { if (!/^https:\/\/t\.me\//.test(u)) return; tg && tg.openTelegramLink ? tg.openTelegramLink(u) : window.open(u, "_blank", "noopener"); };
 
 // ------------------------------------------------------------ router
@@ -334,10 +343,10 @@ async function render(keepScroll=false) {
   if(!keepScroll) view.innerHTML = sk(3);
   try {
     const h = await PG[n](a);
-    if (t !== tok) return;
+    if (t !== tok || (keepScroll && sh)) return;
     view.innerHTML = h;
   } catch (e) {
-    if (t !== tok) return;
+    if (t !== tok || (keepScroll && sh)) return;
     if (verificationUI?.handleError(e)) return;
     view.innerHTML = `<div class="empty">${esc(e.message)}<br><button class="btn s sm" data-act="retry" style="margin:14px auto 0">Повторить</button></div>`;
   }
@@ -366,6 +375,14 @@ document.addEventListener("input", e => {
 A.tab = n => { upgrade?.capture(); stack = []; page = [n]; render(); };
 A.go = n => go(n);
 A.new = () => { introReadyAt = performance.now() + 5000; go("intro"); };
+A.instruction = (_, button) => {
+  const { t } = window.GgselI18n;
+  sheet(`<h2>${esc(t("instruction"))}</h2>
+    <p class="instruction-caption">${esc(t("instructionTitle"))}</p>
+    <video class="instruction-video" src="/static/deal-instruction.mp4"
+      poster="/static/deal-instruction.webp" width="960" height="720" controls playsinline preload="metadata"
+      aria-label="${esc(t("instructionTitle"))}"></video>`, button);
+};
 A.introContinue = () => {
   if (page[0] !== "intro" || performance.now() < introReadyAt) return;
   clearInterval(introTimer);
@@ -409,7 +426,10 @@ PG.home = async () => {
     <video src="${banner}.mp4" poster="${banner}.webp" width="1440" height="1002"
       muted playsinline loop ${reduceMotion?.matches ? 'preload="none"' : 'autoplay'} aria-hidden="true"></video>
   </button>
-  <h3 id="quick-actions-title">Быстрые действия</h3>
+  <div class="quick-actions-heading">
+    <h3 id="quick-actions-title">Быстрые действия</h3>
+    <button class="instruction-link" type="button" data-act="instruction">${ico("play")}${esc(t("instruction"))}</button>
+  </div>
   <div class="qa" role="group" aria-labelledby="quick-actions-title">
     <button data-act="new"><i>${ico("plus")}</i><span>Новая сделка</span></button>
     <button data-act="joinsheet"><i>${ico("box")}</i><span>${esc(text("Вступить в"))} ${esc(text("сделку"))}</span></button>
@@ -742,7 +762,7 @@ document.addEventListener("click",e=>{if(e.target.closest('[data-act="seg"]'))sa
 document.addEventListener("keydown",e=>{
  if(!sh)return;
  if(e.key==="Escape"){e.preventDefault();closeSheet();}
- if(e.key==="Tab") {const els=[...sh.querySelectorAll("button,input,textarea,a[href]")]; const first=els[0],last=els[els.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}
+ if(e.key==="Tab") {const els=[...sh.querySelectorAll("button,input,textarea,a[href],video[controls]")]; const first=els[0],last=els[els.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}
 });
 A.close=closeSheet;
 A.language=()=>sheet('<h2>Язык интерфейса</h2><p>Русский — выбран.</p>');
@@ -751,10 +771,10 @@ async function syncLive(){
  if(document.hidden||sh||!["home","deal","deals","profile"].includes(page[0]))return;
  const key=JSON.stringify(page);
  try{
-  const l=await api("/live");if(key!==JSON.stringify(page))return;
+  const l=await api("/live");if(sh||key!==JSON.stringify(page))return;
   const badge=$("#live-state");if(badge){badge.textContent="● LIVE";badge.classList.remove("offline");}
   if(lastRevision!==l.revision) await render(true);
-  lastRevision=l.revision;
+  if (!sh) lastRevision=l.revision;
  }catch(e){const b=$("#live-state");if(b){b.textContent="Нет связи";b.classList.add("offline");}}
 }
 window.addEventListener("storage",e=>{if(DEMO&&e.key==="deal_preview_v2"){try{DB=JSON.parse(e.newValue)||newDB();syncLive();}catch{}}});

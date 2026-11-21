@@ -1,5 +1,7 @@
 /* Ukrainian translations. Language code: uk; flag label: UA. */
 window.GgselUkrainian={
+  "Guide": "Інструкція",
+  "How to create a deal": "Як створити угоду",
   "Interface review": "Перегляд інтерфейсу",
   "Withdrawals": "Виведення",
   "Select a screen to review.": "Виберіть екран для перегляду.",

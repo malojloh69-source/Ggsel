@@ -36,7 +36,7 @@ LOG = logging.getLogger(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
 ASSETS = {"style.css", "ggsel-theme.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.mp4",
           "payouts.js", "payouts.css", "i18n.js", "i18n-uk.js", "banks.json",
-          "verification.js", "verification.css", "prototype-reviews.json"}
+          "verification.js", "verification.css", "prototype-reviews.json", "deal-instruction.mp4", "deal-instruction.webp"}
 HOME_BANNER_ASSETS = {"ggsell-p2p-banner.webp", "ggsell-p2p-banner-v2.webp"} | {
     f"ggsel_banner_dark_{lang}.{extension}" for lang in ("ru", "en", "uk") for extension in ("mp4", "webp")
 }

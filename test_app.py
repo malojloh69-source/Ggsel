@@ -393,7 +393,7 @@ class DealTests(unittest.TestCase):
   r=self.c.get('/');self.assertEqual(r.status_code,200)
   self.assertIn(b'"preview": false',r.data)
   self.assertIn(b'static/style.css',r.data)
-  self.assertIn(b'static/script.js?v=20261121banner',r.data)
+  self.assertIn(b'static/script.js?v=20261121guide',r.data)
   self.assertNotIn(b'window.__PYTHON_CONFIG__',r.data)
   for name in ['script.js','style.css','brand.png','favicon.svg','welcome.mp4']:
    with self.c.get('/static/'+name) as response:
@@ -415,5 +415,13 @@ class DealTests(unittest.TestCase):
      self.assertEqual(poster.status_code,200)
      self.assertEqual(poster.mimetype,'image/webp')
   self.assertEqual(self.c.get('/static/assets/ggsel_banner_dark_fr.mp4').status_code,404)
+ def test_deal_instruction_media_is_served(self):
+  with self.c.get('/static/deal-instruction.mp4',headers={'Range':'bytes=0-15'}) as video:
+   self.assertEqual(video.status_code,206)
+   self.assertEqual(video.mimetype,'video/mp4')
+   self.assertEqual(video.data[4:8],b'ftyp')
+  with self.c.get('/static/deal-instruction.webp') as poster:
+   self.assertEqual(poster.status_code,200)
+   self.assertEqual(poster.mimetype,'image/webp')
 
 if __name__=='__main__':unittest.main()
