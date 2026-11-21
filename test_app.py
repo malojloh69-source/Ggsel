@@ -1,5 +1,6 @@
 """Run: python -m unittest -v test_app. Uses only temporary databases."""
 import os,tempfile,unittest,json,time,hmac,hashlib,sqlite3
+from pathlib import Path
 from urllib.parse import urlencode
 from concurrent.futures import ThreadPoolExecutor
 _tmp=tempfile.TemporaryDirectory()
@@ -146,7 +147,10 @@ class DealTests(unittest.TestCase):
    self.assertEqual(sent[0][0],'sendVideo')
    self.assertEqual(sent[0][1]['reply_markup']['inline_keyboard'][0][0]['web_app']['url'],config.PUBLIC_BASE_URL)
    self.assertEqual(sent[0][1]['reply_markup']['inline_keyboard'][0][0]['style'],'success')
-   self.assertEqual(sent[0][1]['video'],config.PUBLIC_BASE_URL+'/static/welcome.mp4')
+   video = Path(__file__).with_name('static').joinpath('welcome.mp4').read_bytes()
+   blob_header = f'blob {len(video)}\0'.encode()
+   video_version = hashlib.sha1(blob_header + video).hexdigest()[:12]
+   self.assertEqual(sent[0][1]['video'],config.PUBLIC_BASE_URL+f'/static/welcome.mp4?v={video_version}')
    self.assertIn('<b>👋 Добро пожаловать!</b>',sent[0][1]['caption'])
    self.assertIn('<blockquote><b>',sent[0][1]['caption'])
    self.assertIn('</b></blockquote>',sent[0][1]['caption'])
