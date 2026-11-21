@@ -403,16 +403,12 @@ const loadPrototypeReviews = () => prototypeReviewLoad ||= fetch('/static/protot
 PG.home = async () => {
   const [h, prototypeReviews] = await Promise.all([api("/home"),loadPrototypeReviews(),refreshMe()]);
   const reviews=h.reviews;
-  const { t, text } = window.GgselI18n;
-  return `<section class="hero-banner" aria-labelledby="home-banner-title">
-    <img class="hero-banner-art" src="/static/assets/ggsell-p2p-banner-v2.webp" alt="" fetchpriority="high">
-    <div class="hero-banner-copy">
-      <span class="hero-banner-kicker">P2P</span>
-      <h2 id="home-banner-title">${esc(t("heroTitle"))}</h2>
-      <p>${esc(t("heroCopy"))}</p>
-      <button class="hero-banner-action" type="button" data-act="new">${esc(t("createDeal"))}</button>
-    </div>
-  </section>
+  const { lang, t, text } = window.GgselI18n;
+  const banner = `/static/assets/ggsel_banner_dark_${lang}`;
+  return `<button class="hero-banner" type="button" data-act="new" aria-label="${esc(t("createDeal"))}">
+    <video src="${banner}.mp4" poster="${banner}.webp" width="1440" height="1002"
+      muted playsinline loop ${reduceMotion?.matches ? 'preload="none"' : 'autoplay'} aria-hidden="true"></video>
+  </button>
   <h3 id="quick-actions-title">Быстрые действия</h3>
   <div class="qa" role="group" aria-labelledby="quick-actions-title">
     <button data-act="new"><i>${ico("plus")}</i><span>Новая сделка</span></button>

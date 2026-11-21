@@ -29,75 +29,8 @@ h3 a, .text-button { color: var(--ink); font-size: 14px; font-weight: 500; lette
 label { font-weight: 500; }
 
 .card { padding: 20px; border: 1px solid transparent; border-radius: 18px; background: var(--card); box-shadow: none; }
-.hero-banner {
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  align-items: center;
-  min-height: 252px;
-  padding: 24px clamp(18px, 5vw, 28px);
-  border-radius: 20px;
-  background: #101513;
-  color: #fff;
-  line-height: 1.35;
-  box-shadow: none;
-}
-.hero-banner img.hero-banner-art {
-  position: absolute;
-  z-index: -2;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 75% center;
-}
-.hero-banner::before {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  background: linear-gradient(90deg, #101513 0%, #101513d9 38%, #10151333 63%, transparent 83%);
-  content: "";
-}
-.hero-banner-copy { width: 64%; }
-.hero-banner-kicker {
-  color: #92f5ad;
-  font-size: 13px;
-  font-weight: 750;
-  letter-spacing: .1em;
-}
-.hero-banner h2 {
-  margin: 7px 0 9px;
-  font-size: clamp(27px, 7.5vw, 38px);
-  font-weight: 800;
-  line-height: 1.04;
-  letter-spacing: -.045em;
-}
-.hero-banner p {
-  max-width: 24ch;
-  margin: 0 0 17px;
-  color: #dce4df;
-  font-size: 14px;
-  line-height: 1.35;
-}
-.hero-banner-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 43px;
-  padding: 9px 14px;
-  border-radius: 10px;
-  background: #87ec9d;
-  color: #0c2413;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: center;
-}
-.hero-banner-action::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-}
-.hero-banner:focus-within { outline: 3px solid var(--g2); outline-offset: 3px; }
+.hero-banner { border-radius: 20px; background: #101513; box-shadow: none; }
+.hero-banner:focus-visible { outline-color: var(--g2); }
 .hero { border-radius: 20px; box-shadow: none; }
 .btn { min-height: 52px; padding: 14px 18px; border-radius: 12px; background: var(--g); box-shadow: none; color: #fff; font-weight: 650; }
 .btn.sm { border-radius: 10px; }
@@ -299,10 +232,5 @@ textarea { min-height: 112px; }
   .qa button { min-height: 125px; }
 }
 @media (max-width: 360px) {
-  .hero-banner-copy { width: 72%; }
-  .hero-banner img.hero-banner-art { object-position: 45% center; }
-  .hero-banner::before {
-    background: linear-gradient(90deg, #101513 0%, #101513e6 43%, #10151338 68%, transparent 88%);
-  }
   .method-image { width: 64px; height: 64px; }
 }

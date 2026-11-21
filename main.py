@@ -37,6 +37,9 @@ app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
 ASSETS = {"style.css", "ggsel-theme.css", "script.js", "brand.png", "favicon.svg", "lottie-player.js", "welcome.mp4",
           "payouts.js", "payouts.css", "i18n.js", "i18n-uk.js", "banks.json",
           "verification.js", "verification.css", "prototype-reviews.json"}
+HOME_BANNER_ASSETS = {"ggsell-p2p-banner.webp", "ggsell-p2p-banner-v2.webp"} | {
+    f"ggsel_banner_dark_{lang}.{extension}" for lang in ("ru", "en", "uk") for extension in ("mp4", "webp")
+}
 db.init()
 
 SC = db.SCALE
@@ -280,10 +283,10 @@ def assets(name):
 
 @app.get("/static/assets/<name>")
 def banner_asset(name):
-    # Explicitly allow the public homepage banner.
-    if name not in {"ggsell-p2p-banner.webp", "ggsell-p2p-banner-v2.webp"}:
+    if name not in HOME_BANNER_ASSETS:
         return err("Не найдено", 404)
-    return send_from_directory(os.path.join(BASE, "static", "assets"), name, mimetype="image/webp")
+    mimetype = "video/mp4" if name.endswith(".mp4") else "image/webp"
+    return send_from_directory(os.path.join(BASE, "static", "assets"), name, mimetype=mimetype)
 
 
 @app.get("/static/gifts/<name>")

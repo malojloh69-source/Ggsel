@@ -393,7 +393,7 @@ class DealTests(unittest.TestCase):
   r=self.c.get('/');self.assertEqual(r.status_code,200)
   self.assertIn(b'"preview": false',r.data)
   self.assertIn(b'static/style.css',r.data)
-  self.assertIn(b'static/script.js?v=20261120',r.data)
+  self.assertIn(b'static/script.js?v=20261121banner',r.data)
   self.assertNotIn(b'window.__PYTHON_CONFIG__',r.data)
   for name in ['script.js','style.css','brand.png','favicon.svg','welcome.mp4']:
    with self.c.get('/static/'+name) as response:
@@ -403,5 +403,17 @@ class DealTests(unittest.TestCase):
   with self.c.get('/static/gifts/00.json') as response:self.assertEqual(response.status_code,200)
   self.assertEqual(self.c.get('/static/gifts/../../main.py').status_code,404)
   self.assertEqual(self.c.get('/static/main.py').status_code,404)
+ def test_home_banner_videos_and_posters_are_served(self):
+  for lang in ('ru','en','uk'):
+   with self.subTest(lang=lang):
+    asset = f'/static/assets/ggsel_banner_dark_{lang}'
+    with self.c.get(asset+'.mp4',headers={'Range':'bytes=0-15'}) as video:
+     self.assertEqual(video.status_code,206)
+     self.assertEqual(video.mimetype,'video/mp4')
+     self.assertEqual(video.data[4:8],b'ftyp')
+    with self.c.get(asset+'.webp') as poster:
+     self.assertEqual(poster.status_code,200)
+     self.assertEqual(poster.mimetype,'image/webp')
+  self.assertEqual(self.c.get('/static/assets/ggsel_banner_dark_fr.mp4').status_code,404)
 
 if __name__=='__main__':unittest.main()
