@@ -393,7 +393,7 @@ class DealTests(unittest.TestCase):
   r=self.c.get('/');self.assertEqual(r.status_code,200)
   self.assertIn(b'"preview": false',r.data)
   self.assertIn(b'static/style.css',r.data)
-  self.assertIn(b'static/script.js?v=20261121guide',r.data)
+  self.assertIn(b'static/script.js?v=20261121language',r.data)
   self.assertNotIn(b'window.__PYTHON_CONFIG__',r.data)
   for name in ['script.js','style.css','brand.png','favicon.svg','welcome.mp4']:
    with self.c.get('/static/'+name) as response:

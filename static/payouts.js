@@ -75,10 +75,44 @@ A.payoutConfirm=(_,button)=>busy(button,async()=>{if(!reviewPayload)return;try{c
 document.addEventListener('input',e=>{if(e.target.id==='bank-query'){bankSearch=e.target.value;document.getElementById('bank-results').innerHTML=bankResults()}if(e.target.id==='payout-card'){const value=e.target.value.replace(/\D/g,'').slice(0,19);e.target.value=value.replace(/(.{4})/g,'$1 ').trim()}if(e.target.closest('[data-payout-form]'))capture()});
 document.addEventListener('submit',e=>{if(!e.target.dataset.payoutForm)return;e.preventDefault();validateForm(e.target.dataset.payoutForm)});
 let languageResolve=null;
-function languageMenu(){for(const id of ["app","nav"])document.getElementById(id).inert=true;const el=document.getElementById('onboarding');el.innerHTML=`<div class="onboarding language-screen"><img src="/static/brand.png" class="language-logo" alt="GGsel"><h1>${t('chooseLanguage')}</h1><p>${t('languageSub')}</p><div class="language-options">${['ru','en','uk'].map(l=>`<button class="language-option ${I.lang===l?'selected':''}" data-language-choice="${l}">${video(l)}<b>${{ru:'Русский',en:'English',uk:'Українська'}[l]}</b><span>${l==='uk'?'UA':l.toUpperCase()}</span></button>`).join('')}</div></div>`;el.hidden=false;document.body.classList.add('onboarding-active');el.querySelector('button')?.focus()}
-async function start(){const el=document.getElementById('onboarding');el.hidden=false;document.body.classList.add('onboarding-active');el.innerHTML=`<div class="onboarding loading-screen"><img src="/static/brand.png" class="loading-logo" alt="GGsel"><div class="loading-dots" role="status" aria-label="${t('loading')}"><i></i><i></i><i></i></div></div>`;await new Promise(resolve=>setTimeout(resolve,2500));if(I.hasSavedLanguage){el.hidden=true;document.body.classList.remove('onboarding-active');I.apply();return}languageMenu();return new Promise(resolve=>{languageResolve=resolve})}
+const onboarding = document.getElementById('onboarding');
+function showOnboarding(visible) {
+  for (const id of ['app', 'nav']) document.getElementById(id).inert = visible;
+  document.body.classList.toggle('onboarding-active', visible);
+  onboarding.hidden = !visible;
+}
+function languageMenu() {
+  onboarding.innerHTML = `<div class="onboarding language-screen"><img src="/static/brand.png" class="language-logo" alt="GGsel"><h1>${t('chooseLanguage')}</h1><p>${t('languageSub')}</p><div class="language-options">${['ru','en','uk'].map(l=>`<button type="button" class="language-option ${I.hasSavedLanguage && I.lang===l?'selected':''}" data-language-choice="${l}">${video(l)}<b>${{ru:'Русский',en:'English',uk:'Українська'}[l]}</b><span>${l==='uk'?'UA':l.toUpperCase()}</span></button>`).join('')}</div></div>`;
+  showOnboarding(true);
+  onboarding.querySelector('button')?.focus();
+}
+async function start() {
+  onboarding.innerHTML = `<div class="onboarding loading-screen"><img src="/static/brand.png" class="loading-logo" alt="GGsel"><div class="loading-dots" role="status" aria-label="${t('loading')}"><i></i><i></i><i></i></div></div>`;
+  showOnboarding(true);
+  await new Promise(resolve=>setTimeout(resolve,2500));
+  if (I.hasSavedLanguage) {
+    showOnboarding(false);
+    I.apply();
+    return;
+  }
+  return new Promise(resolve=>{
+    languageResolve=resolve;
+    languageMenu();
+  });
+}
 A.language=()=>{capture();languageMenu()};
-document.addEventListener('click',e=>{const button=e.target.closest('[data-language-choice]');if(!button)return;I.set(button.dataset.languageChoice);document.getElementById('onboarding').hidden=true;document.body.classList.remove('onboarding-active');for(const id of ['app','nav'])document.getElementById(id).inert=false;document.querySelectorAll('#onboarding video').forEach(v=>v.pause());I.apply();if(languageResolve){languageResolve();languageResolve=null}else render()});
+onboarding.addEventListener('click',e=>{
+  const button=e.target.closest('[data-language-choice]');
+  if (!button) return;
+  I.set(button.dataset.languageChoice);
+  showOnboarding(false);
+  onboarding.querySelectorAll('video').forEach(v=>v.pause());
+  I.apply();
+  const finish=languageResolve;
+  languageResolve=null;
+  if (finish) finish();
+  else render();
+});
 function afterRender(){I.apply();for(const el of document.querySelectorAll('.payout-page video,#onboarding video')){if(matchMedia('(prefers-reduced-motion: reduce)').matches){el.autoplay=false;el.pause()}else el.play().catch(()=>{})}}
 return {start,capture,afterRender};
 };

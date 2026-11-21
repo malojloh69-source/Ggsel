@@ -50,7 +50,7 @@ const chipsCur = (id, sel = "RUB") => `<div class="grid3" id="${id}">${CUR.map(c
 const mask = v => (v.length > 10 ? v.slice(0, 4) + " •••• " + v.slice(-4) : v);
 
 const view = $("#view");
-let me = null, cur = localStorage.getItem("deal_currency") || "RUB", page = ["home"], stack = [], tok = 0, sh = null;
+let me = null, cur = lsGet("deal_currency") || "RUB", page = ["home"], stack = [], tok = 0, sh = null;
 const A = {}, PG = {};
 let upgrade = null;
 let verificationUI = null;
@@ -74,7 +74,7 @@ async function api(path, o = {}) {
 }
 // ------------------------------------------------------------ demo mode: backend in the browser (only when no server is reachable)
 const FINAL = ["completed", "cancelled"];
-const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+function lsGet(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { toast("Браузер не разрешил сохранение данных", 1); } };
 const newDB = () => ({ users: {}, admins: {}, bal: {}, deals: {}, txs: [], req: {}, rv: [], n: 0 });
 let DB; try { DB = JSON.parse(lsGet("deal_preview_v2")); } catch (e) { }
